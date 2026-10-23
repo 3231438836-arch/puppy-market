@@ -1,0 +1,10 @@
+{
+ "title":"小狗的待办事项",
+ "empty":"还没有记下要改的地方。可以到面包货架旁观察，也可以留意顾客的求助。",
+ "sources":{"customer-request":"场景求助 · 小仓鼠的高层货位","observation":"现场观察 · 面包货架","existing-improvement":"已有设施记录"},
+ "tasks":[
+  {"id":"lower-bread-slot","enabled":true,"title":"把常用商品放低一点","description":"调整面包货架的指定货位，让够不到上层的顾客也能自行取货。","condition":"实际降低面包货位；帮忙拿下一件商品只算临时帮助。","eventId":"customer001-high-shelf","facilityId":"lowered-bread-slot","actionLabel":"降低摆放高度（免费）","cost":0,"targetObjectId":"bread"},
+  {"id":"counter-step-stool","enabled":false,"title":"收银台前的小脚凳","description":"可选设施；是否使用由顾客自行决定。","condition":"待配置设施位置、价格与使用行为。","eventId":null,"facilityId":"counter-step-stool","actionLabel":null,"cost":null,"targetObjectId":"counter"},
+  {"id":"observe-other-heights","enabled":false,"title":"看看其他商品的高度","description":"留意其他货位的摆放高度。","condition":"待作者配置观察对象与发现条件。","eventId":null,"facilityId":null,"actionLabel":null,"cost":null,"targetObjectId":null}
+ ]
+}

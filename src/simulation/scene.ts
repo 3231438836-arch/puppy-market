@@ -70,6 +70,11 @@ export class SimulationScene extends Phaser.Scene {
     const book=this.add.graphics().setDepth((desk.y+desk.h)*TILE-9);
     book.fillStyle(0x70523d).fillRect(bookX,bookY,18,14).fillStyle(0xe9d7ad).fillRect(bookX+2,bookY+1,14,10).fillStyle(0x9b7353).fillRect(bookX+9,bookY+1,1,10);
     this.label(bookX+9,bookY-10,'员工须知','#70523d');
+    // A second book rests between the terminal and sticker, on the existing counter surface.
+    const todoX=desk.x*TILE+59,todoY=desk.y*TILE+4;
+    book.fillStyle(0x746b4e).fillRect(todoX,todoY,14,17).fillStyle(0xe9dcba).fillRect(todoX+2,todoY+2,10,12);
+    book.lineStyle(1,0x887452).strokeRect(todoX+4,todoY+5,3,3).lineBetween(todoX+8,todoY+6,todoX+11,todoY+6);
+    this.label(418,498,'待办本','#70523d');
     this.label(416,545,'店员侧','#476966');this.label(408,435,'顾客排队','#476966');
     this.flower=this.add.graphics().setDepth(450);this.flower.fillStyle(0x99734d).fillRect(357,487,10,8).fillStyle(0x6c986f).fillRect(361,475,2,13).fillStyle(0xd8a39d).fillRect(358,473,8,6);
     this.guide=this.add.graphics().setDepth(1500);

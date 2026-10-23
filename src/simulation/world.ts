@@ -1,3 +1,4 @@
+import {freshImprovements,discoverImprovement,noteTemporaryHelp,installImprovement,type ImprovementRecord} from './improvements';
 import environmentDefinitions from '../data/events/environment-events.json' with {type:'json'};
 import {resolveEnvironmentEvent,beginEnvironmentEvent,finishEnvironmentEvent,type EnvironmentEventDefinition,type EnvironmentEventRecords} from './environment-events';
 import {chooseAppearance,visitorRadius,visitorSeparation} from './customer-appearance';
@@ -20,8 +21,9 @@ export const fixtures = [
   { id: 'stairs', x: 9, y: 1, w: 2, h: 2, label: '员工宿舍 ↑', spot: center(9, 3) },
   { id: 'counter', x: 9, y: 15, w: 3, h: 1, label: '收银台', spot: center(10, 16) },
 ] as const;
-export type FixtureId = typeof fixtures[number]['id'] | 'notebook' | 'entrance' | `event:${string}`;
+export type FixtureId = typeof fixtures[number]['id'] | 'notebook' | 'entrance' | 'todo-book' | `event:${string}`;
 export const NOTEBOOK_SPOT=center(8,16);
+export const TODO_SPOT=center(12,16);
 export const ENTRANCE_SPOT=center(7,18);
 export function blocked(x: number, y: number) {
   return x < 1 || y < 1 || x >= WIDTH - 1 || y >= HEIGHT - 1 || fixtures.some(f => x >= f.x && x < f.x + f.w && y >= f.y && y < f.y + f.h);
@@ -62,6 +64,7 @@ export function findPath(from: Point, to: Point,occupied:Point[]=[]): Point[] {
 }
 export type CustomerState = 'outside' | 'shopping' | 'waiting-stock' | 'queueing' | 'leaving' | 'gone';
 export class ShopSimulation {
+  improvements:ImprovementRecord=freshImprovements();
   environmentEvents:EnvironmentEventRecords={};
   business=new Business();
   flow=freshFlow();
@@ -105,7 +108,7 @@ export class ShopSimulation {
   get canHearShelfDraft(){return eligibleNpcDialogues(this.narrative.data,CUSTOMER_001,this.business.data.day,'shelf',this.narrative.allowDrafts).length>0;}
   get nearby():FixtureId|null {
     const event=this.nearbyEnvironmentEvent;if(event)return `event:${event.definition.eventId}`;
-    this.lastInteraction=selectInteraction(this.player,this.facing,[...fixtures.map(f=>({id:f.id,...f.spot,range:45})),{id:'notebook',...NOTEBOOK_SPOT,range:30},{id:'entrance',...ENTRANCE_SPOT,range:42}],this.lastInteraction);
+    this.lastInteraction=selectInteraction(this.player,this.facing,[...fixtures.map(f=>({id:f.id,...f.spot,range:45})),{id:'notebook',...NOTEBOOK_SPOT,range:30},{id:'todo-book',...TODO_SPOT,range:28},{id:'entrance',...ENTRANCE_SPOT,range:42}],this.lastInteraction);
     return this.lastInteraction as FixtureId|null;
   }
   get environmentEventViews(){return (environmentDefinitions as EnvironmentEventDefinition[]).map(definition=>{
@@ -131,7 +134,23 @@ export class ShopSimulation {
         success=true;this.message='已帮忙拿取商品。可在这个货架调整摆放位置。';this.announce('已帮忙取货');this.syncLegacy();
       }}
     }
-    finishEnvironmentEvent(view.definition,this.environmentEvents,success);return success;
+    finishEnvironmentEvent(view.definition,this.environmentEvents,success);if(success)this.syncImprovements();return success;
+  }
+  /** Reconcile existing NPC facility flags with the new notebook, without rewards or purchases. */
+  syncImprovements(){const flags=this.narrative.data.profiles[CUSTOMER_001]?.eventFlags,day=this.business.data.day;
+    if(this.improvements.facilities['lowered-bread-slot']&&!shelfAdjusted(this.narrative.data))hamsterProfile(this.narrative.data).eventFlags[customer001Config.flags.adjusted]=true;
+    if(flags?.[customer001Config.flags.firstShelfSeen]||flags?.[customer001Config.flags.helped])discoverImprovement(this.improvements,'lower-bread-slot','customer-request',day);
+    if(flags?.[customer001Config.flags.helped])noteTemporaryHelp(this.improvements,'lower-bread-slot',day);
+    if(shelfAdjusted(this.narrative.data)){
+      installImprovement(this.improvements,'lower-bread-slot',Math.max(this.improvements.entries['lower-bread-slot']?.discoveredDay??1,this.improvements.facilities['lowered-bread-slot']?.installedDay??day));
+      this.environmentEvents['customer001-high-shelf']={state:'completed',count:Math.max(1,this.environmentEvents['customer001-high-shelf']?.count??0)};
+    }
+  }
+  observeBreadHeight(){
+    if(this.closed||this.nearby!=='bread'||this.shelves.bread<=0||shelfAdjusted(this.narrative.data))return false;
+    const discovered=discoverImprovement(this.improvements,'lower-bread-slot','observation',this.business.data.day);
+    this.message='已记下面包货位的高度问题。长期改善需要实际降低摆放位置。';
+    if(discovered)this.announce('待办本新增：调整面包货位');return true;
   }
   movePlayer(x: number, y: number, seconds: number) {
     if (this.closed) return;
@@ -230,12 +249,12 @@ export class ShopSimulation {
       if(v.shoppingIndex>=v.shoppingList.length){v.state='queueing';v.queueOrder=this.flow.nextQueueOrder++;this.flow.queue.push(v.id);}else v.state='shopping';
     }
     for(const view of this.environmentEventViews){const d=view.definition;if(view.state!=='untriggered')this.environmentEvents[d.saveKey]={state:view.state,count:this.environmentEvents[d.saveKey]?.count??0};}
-    this.syncLegacy();
+    this.syncImprovements();this.syncLegacy();
   }
   private abandonHamster(v:Visitor){for(const goods of v.basket){if(this.shelves[goods]<this.capacity)this.shelves[goods]++;else this.warehouse[goods]++;}v.basket=[];v.shoppingIndex=0;v.shelfHelp='left-unassisted';v.state='leaving';v.exitStage='lane';v.path=[];}
   helpHamster(){return this.interactEnvironmentEvent('customer001-high-shelf');}
-  get canAdjustHamsterShelf(){return !!this.narrative.data.profiles[CUSTOMER_001]?.eventFlags[customer001Config.flags.firstShelfSeen]&&!shelfAdjusted(this.narrative.data);}
-  adjustHamsterShelf(){if(this.closed||this.nearby!=='bread'||!this.canAdjustHamsterShelf)return false;hamsterProfile(this.narrative.data).eventFlags[customer001Config.flags.adjusted]=true;this.environmentEvents['customer001-high-shelf']={state:'completed',count:Math.max(1,this.environmentEvents['customer001-high-shelf']?.count??0)};this.stockRevision++;this.message='面包货位已下移，小体型顾客可以自行取货。';this.announce('摆放位置已调整');return true;}
+  get canAdjustHamsterShelf(){return (!!this.improvements.entries['lower-bread-slot']||!!this.narrative.data.profiles[CUSTOMER_001]?.eventFlags[customer001Config.flags.firstShelfSeen])&&!shelfAdjusted(this.narrative.data);}
+  adjustHamsterShelf(){if(this.closed||this.nearby!=='bread'||!this.canAdjustHamsterShelf)return false;hamsterProfile(this.narrative.data).eventFlags[customer001Config.flags.adjusted]=true;this.environmentEvents['customer001-high-shelf']={state:'completed',count:Math.max(1,this.environmentEvents['customer001-high-shelf']?.count??0)};this.syncImprovements();this.stockRevision++;this.message='面包货位已下移，小体型顾客可以自行取货。';this.announce('摆放位置已调整');return true;}
   get atRegister(){const v=this.front;return !this.closed&&this.nearby==='counter'&&!!v&&!v.paid&&Math.hypot(v.position.x-QUEUE_SPOTS[0].x,v.position.y-QUEUE_SPOTS[0].y)<2;}
   checkout(){
     const v=this.front;if(this.narrative.data.active||!this.atRegister||!v||v.paid)return false;
@@ -261,7 +280,7 @@ export class ShopSimulation {
   }
   nextDay(){
     if(!this.closed)return null;
-    const next=new ShopSimulation();next.business=new Business(this.business.data);next.business.nextDay();next.warehouse={...this.warehouse};next.shelves={...this.shelves};next.carrying=this.carrying?{...this.carrying}:null;next.preservedSessionFields={...this.preservedSessionFields};next.narrative=new Narrative(this.narrative.data,this.narrative.content,this.narrative.allowDrafts);next.npcPreview=this.npcPreview;next.environmentEvents=structuredClone(this.environmentEvents);return next;
+    const next=new ShopSimulation();next.business=new Business(this.business.data);next.business.nextDay();next.warehouse={...this.warehouse};next.shelves={...this.shelves};next.carrying=this.carrying?{...this.carrying}:null;next.preservedSessionFields={...this.preservedSessionFields};next.narrative=new Narrative(this.narrative.data,this.narrative.content,this.narrative.allowDrafts);next.npcPreview=this.npcPreview;next.environmentEvents=structuredClone(this.environmentEvents);next.improvements=structuredClone(this.improvements);return next;
   }
   closeDay() { if(!this.canClose)return false;this.closed=true;this.open=false;this.message='今日打烊，库存、资金与顾客记录已保留。';return true; }
 }

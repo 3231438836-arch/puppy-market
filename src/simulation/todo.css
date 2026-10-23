@@ -1,0 +1,19 @@
+/* Use handwriting only where fallback remains legible; body copy uses the system CJK font. */
+#dialog .todo-book{background:#eee0bc;border:4px double #74563e;border-radius:3px;color:#4c382b;box-shadow:5px 5px 0 #54432c55}
+.todo-book .dialog-heading{background:#eee0bc;align-items:flex-start;gap:8px}
+.todo-book h2,.todo-book h3,.todo-book .ink-note{font-family:'Kaiti SC',STKaiti,KaiTi,'Noto Serif CJK SC',serif}
+.todo-book .dialog-heading h2{min-width:0;flex:1;font-size:22px;line-height:1.35;letter-spacing:1px}
+.todo-book .dialog-heading button{flex-shrink:0}
+.todo-tabs{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0}
+.todo-tabs button{flex:1;white-space:nowrap;min-width:64px;padding:7px}
+.todo-paper{background:repeating-linear-gradient(transparent,transparent 30px,#a58b5920 31px,#a58b5920 32px),#f4e7c8;border:1px solid #ae9570;border-left:3px solid #af7965;padding:14px 12px;animation:page-in .18s ease-out}
+.todo-paper p,.todo-paper dd{font:16px/1.65 system-ui,-apple-system,'PingFang SC','Microsoft YaHei',sans-serif;overflow-wrap:anywhere}
+.todo-title{display:flex;align-items:flex-start;gap:12px}
+.todo-title h3{margin:0;font-size:22px;line-height:1.4}
+.ink-checkbox{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;width:25px;height:25px;border:2px solid #72583e;border-radius:2px 0 3px 1px;transform:rotate(-3deg);font-size:29px;font-family:cursive;color:#4c6653}
+.todo-completed h3{text-decoration:line-through;text-decoration-thickness:2px;text-decoration-color:#786444}
+.todo-paper dl{margin:12px 0}.todo-paper dt{font-size:14px;font-weight:bold;color:#6b4f3b}.todo-paper dd{margin:3px 0 10px}
+.todo-paper .ink-note{font-size:17px;line-height:1.6;color:#74503a}.todo-paper .todo-location{font-size:14px}
+.todo-pagination{display:flex;align-items:center;justify-content:space-between;gap:8px;padding-top:12px}
+.todo-pagination button{min-width:76px;min-height:44px}
+body.reduced-motion .todo-paper{animation:none}@media(prefers-reduced-motion:reduce){.todo-paper{animation:none}}
