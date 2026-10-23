@@ -1,0 +1,7 @@
+{
+  "counterSticker": {"enabled": true, "x": 365, "y": 348, "width": 22, "height": 14, "colors": [13986927, 15380590, 15912835, 8631415, 8105651, 11376330]},
+  "wallPoster": {"enabled": false, "x": 137, "y": 100, "width": 16, "height": 36, "color": 15185265},
+  "managerOutfit": {"shirtColor": 6720647, "apronColor": 15918792},
+  "holidayDecoration": {"enabled": false, "x": 210, "y": 85, "width": 30, "height": 8, "color": 15106943},
+  "relationshipProp": {"enabled": false, "x": 350, "y": 284, "width": 18, "height": 15, "color": 15264747, "contentId": null}
+}

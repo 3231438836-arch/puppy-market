@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import style from './data/store-style.json';
 export class StoreScene extends Phaser.Scene {
   private customer?: Phaser.GameObjects.Container;
   private dog?: Phaser.GameObjects.Container;
@@ -40,6 +41,12 @@ export class StoreScene extends Phaser.Scene {
     g.fillStyle(0x6c8181).fillRect(227,281,47,20).fillRect(235,254,34,30);
     g.fillStyle(0xbfd9bd).fillRect(240,259,24,15);
     g.fillStyle(0xe3bb85).fillRect(170,290,32,10);
+    // Configured visual slots carry no automatic narrative or identity disclosure.
+    const sticker = style.counterSticker;
+    if (sticker.enabled) sticker.colors.forEach((color, i) => g.fillStyle(color).fillRect(sticker.x, sticker.y + i * sticker.height / sticker.colors.length, sticker.width, sticker.height / sticker.colors.length));
+    for (const slot of [style.wallPoster, style.holidayDecoration, style.relationshipProp]) {
+      if (slot.enabled) g.fillStyle(slot.color).fillRect(slot.x, slot.y, slot.width, slot.height);
+    }
     this.add.text(215,408,'—  一间小店，今天也请多关照  —',{fontSize:'11px',color:'#846a52'}).setOrigin(.5);
     if(!matchMedia('(prefers-reduced-motion: reduce)').matches) this.tweens.add({targets:this.dog,y:274,duration:850,yoyo:true,repeat:-1,ease:'Sine.inOut'});
   }
@@ -57,8 +64,8 @@ export class StoreScene extends Phaser.Scene {
     g.fillStyle(fur).fillRect(-28,-31,56,42).fillRect(-21,-38,42,51);
     g.fillStyle(0x4b3b32).fillRect(-16,-19,6,8).fillRect(10,-19,6,8).fillRect(-3,-6,6,4);
     g.fillStyle(0xe6ac96).fillRect(-23,-5,9,4).fillRect(14,-5,9,4);
-    g.fillStyle(dog?0x668c87:0xb68979).fillRect(-22,12,44,16);
-    if(dog) g.fillStyle(0xf2e6c8).fillRect(-11,13,22,15);
+    g.fillStyle(dog?style.managerOutfit.shirtColor:0xb68979).fillRect(-22,12,44,16);
+    if(dog) g.fillStyle(style.managerOutfit.apronColor).fillRect(-11,13,22,15);
     return c;
   }
   nextCustomer(served:number) {
