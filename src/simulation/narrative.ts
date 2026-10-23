@@ -1,3 +1,4 @@
+import {CUSTOMER_001,hamsterProfile} from './npc001';
 import type {NarrativeContent} from '../author/content';
 import config from '../data/narrative-test.json' with {type:'json'};
 import type {CharacterData} from '../characters';
@@ -14,7 +15,7 @@ export class Narrative {
  constructor(data?:NarrativeRecord,readonly content:NarrativeContent=config as NarrativeContent){this.data=data?structuredClone(data):{version:1,profiles:{},active:null};}
  private choiceLabel(value:string){for(const nodes of Object.values(this.content.dialogues))for(const node of Object.values(nodes)){const choice=node.choices?.find(c=>c.value===value);if(choice)return choice.label;}return labels[value]??'未选择';}
  private profile(id:string){if(id!==this.content.customer.customerId)return null;return this.data.profiles[id]??= {...this.content.customer,id,shoppingPreferences:this.content.customer.shoppingPreferences as Goods[],visitCount:0,dialogueFlags:{},eventFlags:{},relationshipState:{},lastVisitDay:0};}
- visit(id:string,day:number){const p=this.profile(id);if(p){p.visitCount++;p.lastVisitDay=day;}}
+ visit(id:string,day:number){const p=id===CUSTOMER_001?hamsterProfile(this.data):this.profile(id);if(p){p.visitCount++;p.lastVisitDay=day;}}
  pending(id:string,day:number){const p=this.profile(id);if(!p)return null;return this.content.events.find(e=>e.customerId===id&&p.visitCount>=e.minVisits&&(!('maxVisits' in e)||p.visitCount<=e.maxVisits!)&&day>=e.minDay&&(!('requires' in e)||p.eventFlags[e.requires!])&&(e.repeatable||!p.dialogueFlags[e.eventId]))??null;}
  begin(id:string,visitorId:string,day:number){if(this.data.active)return false;const event=this.pending(id,day);if(!event)return false;this.data.active={eventId:event.eventId,visitorId,nodeId:event.entry};return true;}
  get event(){return this.content.events.find(e=>e.eventId===this.data.active?.eventId);}

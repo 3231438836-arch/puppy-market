@@ -1,0 +1,12 @@
+{
+  "npcId":"CUSTOMER_001",
+  "displayName":"小仓鼠",
+  "species":"Roborovski dwarf hamster",
+  "spriteId":"hamster",
+  "portraitId":"customer001",
+  "lifePhase":"young-adult",
+  "schedule":{"earliestDay":2,"baseWeight":0.28,"adjustedWeight":0.42,"longAbsenceBonus":0.1,"maxWeight":0.65},
+  "shopping":{"preferredCategories":["grains","seeds","sealable-bags","storage-containers"],"prototypeGoods":"bread","maxItems":2,"inspectSeconds":1.2},
+  "shelf":{"goods":"bread","helpRange":56,"waitLimitSeconds":20,"description":"原型使用现有面包货位；谷物、种子、密封袋与容器待独立商品系统扩展。"},
+  "flags":{"met":"customer001_met","firstShelfSeen":"customer001_first_shelf_event_seen","helped":"customer001_first_shelf_helped","adjusted":"customer001_shelf_adjusted"}
+}

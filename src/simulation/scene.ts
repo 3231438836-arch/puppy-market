@@ -1,3 +1,5 @@
+import {makeHamsterTextures} from './hamster-art';
+import {CUSTOMER_001,shelfAdjusted} from './npc001';
 import Phaser from 'phaser';
 import { fixtures, ShopSimulation, TILE, WIDTH, HEIGHT } from './world';
 import style from '../data/store-style.json';
@@ -5,6 +7,7 @@ export class SimulationScene extends Phaser.Scene {
   shop = new ShopSimulation();
   guideTarget: {x:number;y:number}|null=null;
   highlightPlayer=false;
+  private hamsterHint!:Phaser.GameObjects.Text;
   private guide!: Phaser.GameObjects.Graphics;
   activePlay = false;
   paused = false;
@@ -25,7 +28,8 @@ export class SimulationScene extends Phaser.Scene {
   private facing = 'down';
   constructor() { super('simulation'); }
   create() {
-    this.makeSprites();
+    this.makeSprites();makeHamsterTextures(this);
+    this.hamsterHint=this.add.text(0,0,'够不到 · 可帮忙',{fontSize:'12px',fontFamily:'sans-serif',color:'#5e4533',backgroundColor:'#fff0ce',padding:{x:5,y:4}}).setOrigin(.5,1).setDepth(1490).setVisible(false);
     const floor = this.add.graphics();
     for (let y = 0; y < HEIGHT; y++) for (let x = 0; x < WIDTH; x++) {
       const wall = x === 0 || y === 0 || x === WIDTH - 1 || y === HEIGHT - 1;
@@ -128,14 +132,19 @@ export class SimulationScene extends Phaser.Scene {
     this.playerSprite.setPosition(s.player.x,s.player.y).setDepth(s.player.y).setTexture(`dog-${this.facing}-${frame}`);
     this.heldBox.setVisible(!!s.carrying).setPosition(s.player.x+11,s.player.y-5).setDepth(s.player.y+1).setTint(s.carrying?.goods==='milk'?0xecf0df:0xeac28e);
     for(const [id,sprite] of this.customerSprites)if(!s.flow.visitors.some(v=>v.id===id&&v.state!=='gone')){sprite.destroy();this.customerSprites.delete(id);}
-    for(const v of s.flow.visitors){if(v.state==='gone')continue;let sprite=this.customerSprites.get(v.id);if(!sprite){sprite=this.add.image(v.position.x,v.position.y,'customer-down-0').setOrigin(.5,.85);this.customerSprites.set(v.id,sprite);}const dx=v.position.x-sprite.x,dy=v.position.y-sprite.y,direction=Math.abs(dx)>Math.abs(dy)?dx>0?'right':'left':dy>0?'down':'up';sprite.setPosition(v.position.x,v.position.y).setDepth(v.position.y).setTexture(`customer-${dx||dy?direction:'down'}-${dx||dy?1+Math.floor(time/160)%2:0}`).setTint(v.customerId==='test-regular'?0xd1c3ab:0xffffff);}
+    for(const v of s.flow.visitors){if(v.state==='gone')continue;let sprite=this.customerSprites.get(v.id);if(!sprite){sprite=this.add.image(v.position.x,v.position.y,'customer-down-0').setOrigin(.5,.85);this.customerSprites.set(v.id,sprite);}const dx=v.position.x-sprite.x,dy=v.position.y-sprite.y,direction=Math.abs(dx)>Math.abs(dy)?dx>0?'right':'left':dy>0?'down':'up';
+      const hamster=v.customerId===CUSTOMER_001;let texture=`${hamster?'hamster':'customer'}-${dx||dy?direction:'down'}-${dx||dy?1+Math.floor(time/160)%2:0}`;
+      if(hamster&&!dx&&!dy){if(v.shelfHelp==='waiting')texture=`hamster-reach-${Math.floor(time/350)%2}`;else if(v.entered&&v.state==='shopping'&&!v.inspected)texture='hamster-inspect-0';}
+      sprite.setPosition(v.position.x,v.position.y).setDepth(v.position.y).setTexture(texture).setTint(v.customerId==='test-regular'?0xd1c3ab:0xffffff);
+    }
+    const hamster=s.hamster;this.hamsterHint.setVisible(hamster?.shelfHelp==='waiting');if(hamster)this.hamsterHint.setPosition(hamster.position.x,hamster.position.y-32);
     if(this.lastStockRevision!==s.stockRevision){this.lastStockRevision=s.stockRevision;this.stockFlashUntil=time+450;}
     this.stockGraphics.clear();
     for(const goods of ['milk','bread','rice'] as const){
       const f=fixtures.find(f=>f.id===(goods==='rice'?'freezer':goods))!;
       if(time<this.stockFlashUntil&&!document.body.classList.contains('reduced-motion'))this.stockGraphics.lineStyle(2,0xffedb8,.8).strokeRect(f.x*TILE-2,f.y*TILE-2,f.w*TILE+4,f.h*TILE+4);
       for(let i=0;i<s.shelves[goods];i++){
-        const x=f.x*TILE+10+(i%2)*27,y=f.y*TILE+7+Math.floor(i/2)*29;
+        const x=f.x*TILE+10+(i%2)*27,y=f.y*TILE+(goods==='bread'&&shelfAdjusted(s.narrative.data)?39+Math.floor(i/2)*17:7+Math.floor(i/2)*29);
         this.stockGraphics.fillStyle(goods==='milk'?0xe8efe4:goods==='rice'?0xf1edda:0xd7a66e).fillRect(x,y,16,20).fillStyle(goods==='milk'?0x729b9d:goods==='rice'?0x506c50:0x986f47).fillRect(x+3,y+8,10,5);
       }
       this.stockLabels[goods]?.setText(`${goods==='milk'?'牛奶':goods==='bread'?'面包':'饭团'} ${s.shelves[goods]}/${s.capacity}`);if(goods==='rice')this.stockLabels.rice?.setVisible(s.business.level>=2);
@@ -147,6 +156,7 @@ export class SimulationScene extends Phaser.Scene {
       if(this.highlightPlayer)this.guide.lineStyle(2,0xffffe5).strokeRect(s.player.x-17,s.player.y-35,34,39);
     }
     const el=document.querySelector<HTMLElement>('#game')!;
+    el.dataset.hamsterState=hamster?.shelfHelp??hamster?.state??'absent';
     el.dataset.playerX=String(s.player.x);el.dataset.playerY=String(s.player.y);
     this.onRefresh();
   }
