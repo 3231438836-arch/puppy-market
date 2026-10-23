@@ -1,0 +1,6 @@
+[
+ {"id":"milk","name":"牛奶","price":8,"color":15264747,"label":"MILK"},
+ {"id":"bread","name":"面包","price":6,"color":15185265,"label":"BREAD"},
+ {"id":"rice","name":"饭团","price":10,"color":16117469,"label":"RICE"},
+ {"id":"noodles","name":"泡面","price":12,"color":15106943,"label":"CUP"}
+]

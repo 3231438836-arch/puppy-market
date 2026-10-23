@@ -1,0 +1,24 @@
+import {test,expect} from '@playwright/test';
+test('手机完整营业循环、失误、暂停与重开',async({page})=>{
+ const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.clock.install();await page.goto('/');
+ await expect(page.locator('canvas')).toBeVisible();
+ await page.getByRole('button',{name:/开始第 1 天/}).click();
+ const items=(await page.getByTestId('order').getAttribute('data-items'))!.split(',');
+ const wrong=items[0]==='milk'?'bread':'milk';
+ await page.locator(`[data-product="${wrong}"]`).click();await page.getByRole('button',{name:'结账 ✓'}).click();
+ await expect(page.getByRole('status')).toContainText('扣 3 秒');
+ await page.getByRole('button',{name:'清空'}).click();
+ for(const id of items)await page.locator(`[data-product="${id}"]`).click();
+ await page.getByRole('button',{name:'结账 ✓'}).click();
+ await expect(page.getByTestId('combo')).toHaveText('1 连击');
+ expect(Number(await page.getByTestId('coins').textContent())).toBeGreaterThan(0);
+ await page.getByRole('button',{name:'暂停',exact:true}).click();
+ const time=await page.getByTestId('timer').textContent();await page.clock.runFor(10000);await expect(page.getByTestId('timer')).toHaveText(time!);
+ await page.getByRole('button',{name:'继续营业'}).click();await page.clock.fastForward(121000);
+ await expect(page.getByRole('heading',{name:'今日打烊'})).toBeVisible();await page.screenshot({path:'test-results/closing-mobile.png',fullPage:true});
+ await page.getByRole('button',{name:/开始第 2 天/}).click();await expect(page.getByTestId('coins')).toHaveText('0');
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);expect(errors).toEqual([]);
+ await page.screenshot({path:'test-results/store-mobile.png',fullPage:true});
+});
+test('320px 窄屏操作可用',async({page})=>{await page.setViewportSize({width:320,height:640});await page.goto('/');await page.getByRole('button',{name:/开始第 1 天/}).click();await expect(page.getByRole('button',{name:'结账 ✓'})).toBeVisible();expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);});
