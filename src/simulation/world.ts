@@ -1,3 +1,6 @@
+import environmentDefinitions from '../data/events/environment-events.json' with {type:'json'};
+import {resolveEnvironmentEvent,beginEnvironmentEvent,finishEnvironmentEvent,type EnvironmentEventDefinition,type EnvironmentEventRecords} from './environment-events';
+import {chooseAppearance,visitorRadius,visitorSeparation} from './customer-appearance';
 import {eligibleNpcDialogues} from './npc-dialogues';
 import {CUSTOMER_001,customer001Config,hamsterProfile,hamsterWeight,shelfAdjusted} from './npc001';
 import {Narrative} from './narrative';
@@ -17,7 +20,7 @@ export const fixtures = [
   { id: 'stairs', x: 9, y: 1, w: 2, h: 2, label: '员工宿舍 ↑', spot: center(9, 3) },
   { id: 'counter', x: 9, y: 15, w: 3, h: 1, label: '收银台', spot: center(10, 16) },
 ] as const;
-export type FixtureId = typeof fixtures[number]['id'] | 'notebook' | 'entrance' | 'customer001';
+export type FixtureId = typeof fixtures[number]['id'] | 'notebook' | 'entrance' | `event:${string}`;
 export const NOTEBOOK_SPOT=center(8,16);
 export const ENTRANCE_SPOT=center(7,18);
 export function blocked(x: number, y: number) {
@@ -59,6 +62,7 @@ export function findPath(from: Point, to: Point,occupied:Point[]=[]): Point[] {
 }
 export type CustomerState = 'outside' | 'shopping' | 'waiting-stock' | 'queueing' | 'leaving' | 'gone';
 export class ShopSimulation {
+  environmentEvents:EnvironmentEventRecords={};
   business=new Business();
   flow=freshFlow();
   narrative=new Narrative();
@@ -72,6 +76,7 @@ export class ShopSimulation {
   player = center(7, 15);
   facing={x:0,y:1};
   private lastInteraction:string|null=null;
+  private lastEnvironmentEvent:string|null=null;
   customer = center(7, 18);
   customerState: CustomerState = 'outside';
   path: Point[] = [];
@@ -99,9 +104,34 @@ export class ShopSimulation {
   get canTalkHamster(){const v=this.hamster;return !!v&&v.shelfHelp!=='waiting'&&Math.hypot(this.player.x-v.position.x,this.player.y-v.position.y)<=56&&eligibleNpcDialogues(this.narrative.data,CUSTOMER_001,this.business.data.day,'chat',this.narrative.allowDrafts).length>0;}
   get canHearShelfDraft(){return eligibleNpcDialogues(this.narrative.data,CUSTOMER_001,this.business.data.day,'shelf',this.narrative.allowDrafts).length>0;}
   get nearby():FixtureId|null {
-    const hamster=this.hamster;if(hamster?.shelfHelp==='waiting'&&Math.hypot(this.player.x-hamster.position.x,this.player.y-hamster.position.y)<=customer001Config.shelf.helpRange)return 'customer001';
+    const event=this.nearbyEnvironmentEvent;if(event)return `event:${event.definition.eventId}`;
     this.lastInteraction=selectInteraction(this.player,this.facing,[...fixtures.map(f=>({id:f.id,...f.spot,range:45})),{id:'notebook',...NOTEBOOK_SPOT,range:30},{id:'entrance',...ENTRANCE_SPOT,range:42}],this.lastInteraction);
     return this.lastInteraction as FixtureId|null;
+  }
+  get environmentEventViews(){return (environmentDefinitions as EnvironmentEventDefinition[]).map(definition=>{
+    const visitor=this.flow.visitors.find(v=>v.customerId===definition.npcId&&v.state!=='gone'&&v.state!=='leaving');
+    const fixture=fixtures.find(f=>f.id===definition.targetObjectId);
+    const goods=definition.targetObjectId as Goods;
+    const eligible=!!visitor&&visitor.shelfHelp==='waiting'&&definition.triggerConditions.npcState==='shelf-help-waiting'&&(!definition.triggerConditions.requiresStock||this.shelves[goods]>0);
+    return {definition,state:resolveEnvironmentEvent(definition,this.environmentEvents,eligible,visitor?.shelfHelp!==undefined||!!(definition.triggerConditions.seenFlag&&this.narrative.data.profiles[definition.npcId]?.eventFlags[definition.triggerConditions.seenFlag])),interactionPosition:fixture?.spot??definition.anchorPosition};
+  });}
+  get canHearEnvironmentDialogue(){const v=this.nearbyEnvironmentEvent,d=v?.definition;return !!d?.dialogueTrigger&&eligibleNpcDialogues(this.narrative.data,d.npcId,this.business.data.day,d.dialogueTrigger,this.narrative.allowDrafts).length>0;}
+  get nearbyEnvironmentEvent(){const views=this.environmentEventViews.filter(v=>v.state==='available');
+    const id=selectInteraction(this.player,this.facing,views.map(v=>({id:v.definition.eventId,...v.interactionPosition,range:v.definition.interactionRange})),this.lastEnvironmentEvent);this.lastEnvironmentEvent=id;
+    return views.find(v=>v.definition.eventId===id)??null;
+  }
+  interactEnvironmentEvent(eventId:string){const view=this.environmentEventViews.find(v=>v.definition.eventId===eventId);if(this.closed||!view||!beginEnvironmentEvent(view,this.environmentEvents,this.player))return false;
+    let success=false;
+    if(view.definition.actionId==='help-take-product'){
+      const v=this.flow.visitors.find(v=>v.customerId===view.definition.npcId&&v.shelfHelp==='waiting'&&['shopping','waiting-stock'].includes(v.state));
+      if(v){const goods=v.shoppingList[v.shoppingIndex];if(goods===view.definition.targetObjectId&&this.shelves[goods]>0){
+        v.shelfHelp='helped';this.shelves[goods]--;v.basket.push(goods);v.shoppingIndex++;this.stockRevision++;
+        if(v.shoppingIndex>=v.shoppingList.length){v.state='queueing';v.queueOrder=this.flow.nextQueueOrder++;this.flow.queue.push(v.id);}
+        if(v.customerId===CUSTOMER_001){const p=hamsterProfile(this.narrative.data);p.eventFlags[customer001Config.flags.met]=true;p.eventFlags[customer001Config.flags.helped]=true;}
+        success=true;this.message='已帮忙拿取商品。可在这个货架调整摆放位置。';this.announce('已帮忙取货');this.syncLegacy();
+      }}
+    }
+    finishEnvironmentEvent(view.definition,this.environmentEvents,success);return success;
   }
   movePlayer(x: number, y: number, seconds: number) {
     if (this.closed) return;
@@ -162,7 +192,7 @@ export class ShopSimulation {
     if(pending&&active.length<3&&!active.some(v=>Math.hypot(v.position.x-ENTRANCE_SPOT.x,v.position.y-ENTRANCE_SPOT.y)<30)){
       pending.arrived=true;const customerId=pending.customerId??(pending.id.endsWith('1')?'test-regular':'ordinary');if(!this.tutorialDay)this.narrative.visit(customerId,this.business.data.day);const available=this.business.unlocked.filter(id=>this.shelves[id]>0);
       const shopping:Goods[]=customerId===CUSTOMER_001?(available.includes('bread')?['bread',...available.filter(id=>id!=='bread')].slice(0,Math.random()<.65?1:2) as Goods[]:['bread']):available.length?available.slice(0,2):['milk'] as Goods[];
-      this.flow.visitors.push({id:pending.id,customerId,position:{...ENTRANCE_SPOT},entered:false,state:'shopping',path:[],shoppingList:shopping,shoppingIndex:0,basket:[],queueOrder:null,paid:false,waitSeconds:0});
+      this.flow.visitors.push({id:pending.id,customerId,position:{...ENTRANCE_SPOT},entered:false,state:'shopping',path:[],shoppingList:shopping,shoppingIndex:0,basket:[],queueOrder:null,paid:false,waitSeconds:0,...(customerId==='ordinary'?{appearanceId:chooseAppearance(this.flow.visitors.filter(v=>v.customerId==='ordinary').slice(-3).map(v=>v.appearanceId))}: {})});
     }
     // Front of queue and departing customers move first; occupancy prevents overlap.
     const ordered=[...this.flow.visitors].sort((a,b)=>(a.state==='leaving'?-10:a.queueOrder??100)-(b.state==='leaving'?-10:b.queueOrder??100));
@@ -173,7 +203,7 @@ export class ShopSimulation {
         if(!v.path.length||Math.hypot(v.path.at(-1)!.x-target.x,v.path.at(-1)!.y-target.y)>1)v.path=this.route(v,target,others);
         if(!v.path.length&&Math.floor(v.position.x/TILE)===Math.floor(target.x/TILE)&&Math.floor(v.position.y/TILE)===Math.floor(target.y/TILE))v.path=[target];
         if(v.path.length){const next=v.path[0],distance=Math.hypot(next.x-v.position.x,next.y-v.position.y),amount=Math.min(distance,seconds*62),p={x:v.position.x+(next.x-v.position.x)/(distance||1)*amount,y:v.position.y+(next.y-v.position.y)/(distance||1)*amount};
-          if(canStand(p)&&!others.some(o=>Math.hypot(o.position.x-p.x,o.position.y-p.y)<24)){v.position=p;if(distance<=amount)v.path.shift();}
+          if(canStand(p,visitorRadius(v))&&!others.some(o=>Math.hypot(o.position.x-p.x,o.position.y-p.y)<visitorSeparation(v,o))){v.position=p;if(distance<=amount)v.path.shift();}
           else v.path=this.route(v,target,others);
         }continue;
       }
@@ -187,7 +217,7 @@ export class ShopSimulation {
         if(!v.inspected){v.inspectSeconds=(v.inspectSeconds??0)+seconds;if(v.inspectSeconds<customer001Config.shopping.inspectSeconds)continue;v.inspected=true;}
         if(goods===customer001Config.shelf.goods&&this.shelves[goods]>0&&!shelfAdjusted(this.narrative.data)&&v.shelfHelp!=='helped'){
           const p=hamsterProfile(this.narrative.data);
-          if(!p.eventFlags[customer001Config.flags.firstShelfSeen]||v.shelfHelp==='waiting'){
+          if(!this.environmentEvents['customer001-high-shelf']||this.environmentEvents['customer001-high-shelf'].state!=='completed'){
             p.eventFlags[customer001Config.flags.firstShelfSeen]=true;v.shelfHelp='waiting';v.shelfWaitSeconds=(v.shelfWaitSeconds??0)+seconds;
             if(v.shelfWaitSeconds<customer001Config.shelf.waitLimitSeconds)continue;
           }
@@ -199,12 +229,13 @@ export class ShopSimulation {
       this.shelves[goods]--;v.basket.push(goods);v.shoppingIndex++;
       if(v.shoppingIndex>=v.shoppingList.length){v.state='queueing';v.queueOrder=this.flow.nextQueueOrder++;this.flow.queue.push(v.id);}else v.state='shopping';
     }
+    for(const view of this.environmentEventViews){const d=view.definition;if(view.state!=='untriggered')this.environmentEvents[d.saveKey]={state:view.state,count:this.environmentEvents[d.saveKey]?.count??0};}
     this.syncLegacy();
   }
   private abandonHamster(v:Visitor){for(const goods of v.basket){if(this.shelves[goods]<this.capacity)this.shelves[goods]++;else this.warehouse[goods]++;}v.basket=[];v.shoppingIndex=0;v.shelfHelp='left-unassisted';v.state='leaving';v.exitStage='lane';v.path=[];}
-  helpHamster(){const v=this.hamster;if(this.closed||this.nearby!=='customer001'||v?.shelfHelp!=='waiting')return false;v.shelfHelp='helped';const p=hamsterProfile(this.narrative.data);p.eventFlags[customer001Config.flags.met]=true;p.eventFlags[customer001Config.flags.helped]=true;this.message='已帮小仓鼠拿取商品。可在这个货架调整摆放位置。';this.announce('已帮忙取货');return true;}
+  helpHamster(){return this.interactEnvironmentEvent('customer001-high-shelf');}
   get canAdjustHamsterShelf(){return !!this.narrative.data.profiles[CUSTOMER_001]?.eventFlags[customer001Config.flags.firstShelfSeen]&&!shelfAdjusted(this.narrative.data);}
-  adjustHamsterShelf(){if(this.closed||this.nearby!=='bread'||!this.canAdjustHamsterShelf)return false;hamsterProfile(this.narrative.data).eventFlags[customer001Config.flags.adjusted]=true;this.stockRevision++;this.message='面包货位已下移，小体型顾客可以自行取货。';this.announce('摆放位置已调整');return true;}
+  adjustHamsterShelf(){if(this.closed||this.nearby!=='bread'||!this.canAdjustHamsterShelf)return false;hamsterProfile(this.narrative.data).eventFlags[customer001Config.flags.adjusted]=true;this.environmentEvents['customer001-high-shelf']={state:'completed',count:Math.max(1,this.environmentEvents['customer001-high-shelf']?.count??0)};this.stockRevision++;this.message='面包货位已下移，小体型顾客可以自行取货。';this.announce('摆放位置已调整');return true;}
   get atRegister(){const v=this.front;return !this.closed&&this.nearby==='counter'&&!!v&&!v.paid&&Math.hypot(v.position.x-QUEUE_SPOTS[0].x,v.position.y-QUEUE_SPOTS[0].y)<2;}
   checkout(){
     const v=this.front;if(this.narrative.data.active||!this.atRegister||!v||v.paid)return false;
@@ -230,7 +261,7 @@ export class ShopSimulation {
   }
   nextDay(){
     if(!this.closed)return null;
-    const next=new ShopSimulation();next.business=new Business(this.business.data);next.business.nextDay();next.warehouse={...this.warehouse};next.shelves={...this.shelves};next.carrying=this.carrying?{...this.carrying}:null;next.preservedSessionFields={...this.preservedSessionFields};next.narrative=new Narrative(this.narrative.data,this.narrative.content,this.narrative.allowDrafts);next.npcPreview=this.npcPreview;return next;
+    const next=new ShopSimulation();next.business=new Business(this.business.data);next.business.nextDay();next.warehouse={...this.warehouse};next.shelves={...this.shelves};next.carrying=this.carrying?{...this.carrying}:null;next.preservedSessionFields={...this.preservedSessionFields};next.narrative=new Narrative(this.narrative.data,this.narrative.content,this.narrative.allowDrafts);next.npcPreview=this.npcPreview;next.environmentEvents=structuredClone(this.environmentEvents);return next;
   }
   closeDay() { if(!this.canClose)return false;this.closed=true;this.open=false;this.message='今日打烊，库存、资金与顾客记录已保留。';return true; }
 }

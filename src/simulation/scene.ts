@@ -1,3 +1,6 @@
+import {makeCustomerTextures,appearanceTexture} from './customer-art';
+import {appearanceFor} from './customer-appearance';
+import {visibleEnvironmentEvents} from './environment-events';
 import {makeHamsterTextures} from './hamster-art';
 import {CUSTOMER_001,shelfAdjusted} from './npc001';
 import Phaser from 'phaser';
@@ -7,7 +10,7 @@ export class SimulationScene extends Phaser.Scene {
   shop = new ShopSimulation();
   guideTarget: {x:number;y:number}|null=null;
   highlightPlayer=false;
-  private hamsterHint!:Phaser.GameObjects.Text;
+  private eventMarkers!:Phaser.GameObjects.Graphics;
   private guide!: Phaser.GameObjects.Graphics;
   activePlay = false;
   paused = false;
@@ -28,8 +31,8 @@ export class SimulationScene extends Phaser.Scene {
   private facing = 'down';
   constructor() { super('simulation'); }
   create() {
-    this.makeSprites();makeHamsterTextures(this);
-    this.hamsterHint=this.add.text(0,0,'够不到 · 可帮忙',{fontSize:'12px',fontFamily:'sans-serif',color:'#5e4533',backgroundColor:'#fff0ce',padding:{x:5,y:4}}).setOrigin(.5,1).setDepth(1490).setVisible(false);
+    this.makeSprites();makeHamsterTextures(this);makeCustomerTextures(this);
+    this.eventMarkers=this.add.graphics().setDepth(1490);
     const floor = this.add.graphics();
     for (let y = 0; y < HEIGHT; y++) for (let x = 0; x < WIDTH; x++) {
       const wall = x === 0 || y === 0 || x === WIDTH - 1 || y === HEIGHT - 1;
@@ -134,10 +137,19 @@ export class SimulationScene extends Phaser.Scene {
     for(const [id,sprite] of this.customerSprites)if(!s.flow.visitors.some(v=>v.id===id&&v.state!=='gone')){sprite.destroy();this.customerSprites.delete(id);}
     for(const v of s.flow.visitors){if(v.state==='gone')continue;let sprite=this.customerSprites.get(v.id);if(!sprite){sprite=this.add.image(v.position.x,v.position.y,'customer-down-0').setOrigin(.5,.85);this.customerSprites.set(v.id,sprite);}const dx=v.position.x-sprite.x,dy=v.position.y-sprite.y,direction=Math.abs(dx)>Math.abs(dy)?dx>0?'right':'left':dy>0?'down':'up';
       const hamster=v.customerId===CUSTOMER_001;let texture=`${hamster?'hamster':'customer'}-${dx||dy?direction:'down'}-${dx||dy?1+Math.floor(time/160)%2:0}`;
+      const appearance=appearanceFor(v);if(appearance)texture=appearanceTexture(appearance.id,dx||dy?direction:'down',dx||dy?1+Math.floor(time/160)%2:0);
       if(hamster&&!dx&&!dy){if(v.shelfHelp==='waiting')texture=`hamster-reach-${Math.floor(time/350)%2}`;else if(v.entered&&v.state==='shopping'&&!v.inspected)texture='hamster-inspect-0';}
       sprite.setPosition(v.position.x,v.position.y).setDepth(v.position.y).setTexture(texture).setTint(v.customerId==='test-regular'?0xd1c3ab:0xffffff);
     }
-    const hamster=s.hamster;this.hamsterHint.setVisible(hamster?.shelfHelp==='waiting');if(hamster)this.hamsterHint.setPosition(hamster.position.x,hamster.position.y-32);
+    const hamster=s.hamster;this.eventMarkers.clear();
+    const events=visibleEnvironmentEvents(s.environmentEventViews,s.player);
+    for(const event of events){const p=event.definition.anchorPosition;
+      const reduced=document.body.classList.contains('reduced-motion')||matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const y=p.y+(reduced?0:Math.round(Math.sin(time/260)*2));
+      this.eventMarkers.fillStyle(0x5b4232).fillRect(p.x-8,y-20,16,22).fillStyle(0xffe4a3).fillRect(p.x-6,y-18,12,18);
+      this.eventMarkers.fillStyle(0x9b4e32).fillRect(p.x-2,y-15,4,9).fillRect(p.x-2,y-3,4,3);
+    }
+
     if(this.lastStockRevision!==s.stockRevision){this.lastStockRevision=s.stockRevision;this.stockFlashUntil=time+450;}
     this.stockGraphics.clear();
     for(const goods of ['milk','bread','rice'] as const){
@@ -156,6 +168,8 @@ export class SimulationScene extends Phaser.Scene {
       if(this.highlightPlayer)this.guide.lineStyle(2,0xffffe5).strokeRect(s.player.x-17,s.player.y-35,34,39);
     }
     const el=document.querySelector<HTMLElement>('#game')!;
+    el.dataset.environmentMarkers=events.map(v=>v.definition.eventId).join(',');
+    el.dataset.customerAppearances=s.flow.visitors.filter(v=>v.customerId==='ordinary').map(v=>appearanceFor(v)?.id).join(',');
     el.dataset.hamsterState=hamster?.shelfHelp??hamster?.state??'absent';
     el.dataset.playerX=String(s.player.x);el.dataset.playerY=String(s.player.y);
     this.onRefresh();

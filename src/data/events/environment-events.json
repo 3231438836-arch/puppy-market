@@ -1,0 +1,3 @@
+[
+ {"eventId":"customer001-high-shelf","npcId":"CUSTOMER_001","targetObjectId":"bread","anchorPosition":{"x":398,"y":205},"triggerConditions":{"npcState":"shelf-help-waiting","requiresStock":true,"seenFlag":"customer001_first_shelf_event_seen"},"interactionLabel":"帮忙拿商品","interactionRange":56,"repeatPolicy":"once","saveKey":"customer001-high-shelf","actionId":"help-take-product","dialogueTrigger":"shelf","priority":10}
+]

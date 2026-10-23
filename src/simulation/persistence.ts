@@ -1,3 +1,4 @@
+import {validEnvironmentEvents} from './environment-events';
 import {Narrative,validNarrative} from './narrative';
 import {freshFlow,arrivalPlan,validFlow} from './customer-flow';
 import { Business, validBusiness } from './business';
@@ -14,11 +15,12 @@ const legacyStand=(p:Point)=>[-9,9].every(dx=>[-9,9].every(dy=>{const x=Math.flo
 const point=(p:unknown):p is Point=>!!p&&typeof p==='object'&&number((p as Point).x,512)&&number((p as Point).y,640)&&(canStand(p as Point)||legacyStand(p as Point));
 const goods=(id:unknown):id is Goods=>id==='milk'||id==='bread'||id==='rice';
 export function snapshot(shop:ShopSimulation){
- return {...shop.preservedSessionFields,version:1,narrative:shop.narrative.data,flow:shop.flow,tutorialDay:shop.tutorialDay,business:shop.business.data,player:shop.player,customer:shop.customer,customerState:shop.customerState,path:shop.path,shoppingIndex:shop.shoppingIndex,shoppingList:shop.shoppingList,warehouse:shop.warehouse,shelves:shop.shelves,carrying:shop.carrying,basket:shop.basket,scanned:shop.scanned,confirmed:shop.confirmed,cashReceived:shop.cashReceived,change:shop.change,coins:shop.coins,served:shop.served,open:shop.open,closed:shop.closed,remaining:shop.remaining};
+ return {...shop.preservedSessionFields,version:1,environmentEvents:shop.environmentEvents,narrative:shop.narrative.data,flow:shop.flow,tutorialDay:shop.tutorialDay,business:shop.business.data,player:shop.player,customer:shop.customer,customerState:shop.customerState,path:shop.path,shoppingIndex:shop.shoppingIndex,shoppingList:shop.shoppingList,warehouse:shop.warehouse,shelves:shop.shelves,carrying:shop.carrying,basket:shop.basket,scanned:shop.scanned,confirmed:shop.confirmed,cashReceived:shop.cashReceived,change:shop.change,coins:shop.coins,served:shop.served,open:shop.open,closed:shop.closed,remaining:shop.remaining};
 }
 export type SessionData=ReturnType<typeof snapshot>;
 export function validSession(value:unknown):value is SessionData{
  if(!value||typeof value!=='object')return false;const v=value as SessionData;
+ if(v.environmentEvents!==undefined&&!validEnvironmentEvents(v.environmentEvents))return false;
  if(v.narrative!==undefined&&!validNarrative(v.narrative))return false;
  if(v.flow!==undefined&&!validFlow(v.flow))return false;
  if(v.business!==undefined&&!validBusiness(v.business))return false;
@@ -33,7 +35,11 @@ export function validSession(value:unknown):value is SessionData{
  return true;
 }
 export function restoreSession(v:SessionData):ShopSimulation{
- const shop=new ShopSimulation();for(const key of Object.keys(snapshot(shop))){if(key==='version'||key==='business'||key==='flow'||key==='tutorialDay'||key==='narrative')continue;Object.assign(shop,{[key]:structuredClone(v[key as keyof SessionData])});}shop.warehouse.rice??=0;shop.shelves.rice??=0;shop.business=v.business?new Business(v.business):new Business();if(!v.business)shop.business.importLegacy(shop.coins,shop.served);
+ const shop=new ShopSimulation();for(const key of Object.keys(snapshot(shop))){if(key==='version'||key==='business'||key==='flow'||key==='tutorialDay'||key==='narrative'||key==='environmentEvents')continue;Object.assign(shop,{[key]:structuredClone(v[key as keyof SessionData])});}shop.warehouse.rice??=0;shop.shelves.rice??=0;shop.business=v.business?new Business(v.business):new Business();if(!v.business)shop.business.importLegacy(shop.coins,shop.served);
+ shop.environmentEvents=structuredClone(v.environmentEvents??{});
+ for(const record of Object.values(shop.environmentEvents))if(record.state==='in-progress')record.state='inactive';
+ const flags=v.narrative?.profiles?.CUSTOMER_001?.eventFlags;
+ if(flags?.customer001_first_shelf_helped||flags?.customer001_shelf_adjusted)shop.environmentEvents['customer001-high-shelf']={state:'completed',count:Math.max(1,shop.environmentEvents['customer001-high-shelf']?.count??0)};
  shop.narrative=new Narrative(v.narrative);
  shop.tutorialDay=v.tutorialDay===true;
  shop.flow=v.flow?structuredClone(v.flow):freshFlow();
