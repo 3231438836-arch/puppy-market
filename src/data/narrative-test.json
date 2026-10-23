@@ -1,0 +1,22 @@
+{
+  "notice":"测试占位内容，非正式人物或剧情。",
+  "customer": {"customerId":"test-regular","displayName":"测试熟客","spriteId":"customer","portraitId":"test-regular","shoppingPreferences":["milk","bread"],"authorNotes":"仅验证肖像、分支与回访记忆。正式名字、外貌与文本由作者定稿。"},
+  "events":[
+    {"eventId":"test-first-visit","customerId":"test-regular","minVisits":1,"maxVisits":1,"minDay":1,"repeatable":false,"dialogueRef":"first","entry":"greeting","resultFlag":"test-first-finished"},
+    {"eventId":"test-return-visit","customerId":"test-regular","minVisits":2,"minDay":1,"repeatable":false,"requires":"test-first-finished","dialogueRef":"return","entry":"recall","resultFlag":"test-return-finished"}
+  ],
+  "dialogues":{
+    "first":{
+      "greeting":{"text":"【测试占位】首次到店的对话。请选择一种回应，下一次到店会读取这次选择。","expression":"neutral","choices":[
+        {"label":"先听对方说","value":"listen","flag":"test-listened","next":"reply"},
+        {"label":"保持简短","value":"brief","flag":"test-brief","next":"reply"},
+        {"label":"这次先结账","value":"later","flag":"test-later","next":"reply"}
+      ]},
+      "reply":{"text":"【测试占位】已记录「{previousChoice}」。正式后续由作者填写。","expression":"soft"}
+    },
+    "return":{
+      "recall":{"text":"【测试占位】再次到店。上次的回应是「{previousChoice}」，这次已读取历史记录。","expression":"soft","next":"end"},
+      "end":{"text":"【测试占位】回访分支验证结束，可以继续经营。","expression":"neutral"}
+    }
+  }
+}

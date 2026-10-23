@@ -1,3 +1,4 @@
+import {Narrative,validNarrative} from './narrative';
 import {freshFlow,arrivalPlan,validFlow} from './customer-flow';
 import { Business, validBusiness } from './business';
 import { ShopSimulation, canStand, fixtures, type Goods, type Point, type CustomerState } from './world';
@@ -13,11 +14,12 @@ const legacyStand=(p:Point)=>[-9,9].every(dx=>[-9,9].every(dy=>{const x=Math.flo
 const point=(p:unknown):p is Point=>!!p&&typeof p==='object'&&number((p as Point).x,512)&&number((p as Point).y,640)&&(canStand(p as Point)||legacyStand(p as Point));
 const goods=(id:unknown):id is Goods=>id==='milk'||id==='bread'||id==='rice';
 export function snapshot(shop:ShopSimulation){
- return {...shop.preservedSessionFields,version:1,flow:shop.flow,tutorialDay:shop.tutorialDay,business:shop.business.data,player:shop.player,customer:shop.customer,customerState:shop.customerState,path:shop.path,shoppingIndex:shop.shoppingIndex,shoppingList:shop.shoppingList,warehouse:shop.warehouse,shelves:shop.shelves,carrying:shop.carrying,basket:shop.basket,scanned:shop.scanned,confirmed:shop.confirmed,cashReceived:shop.cashReceived,change:shop.change,coins:shop.coins,served:shop.served,open:shop.open,closed:shop.closed,remaining:shop.remaining};
+ return {...shop.preservedSessionFields,version:1,narrative:shop.narrative.data,flow:shop.flow,tutorialDay:shop.tutorialDay,business:shop.business.data,player:shop.player,customer:shop.customer,customerState:shop.customerState,path:shop.path,shoppingIndex:shop.shoppingIndex,shoppingList:shop.shoppingList,warehouse:shop.warehouse,shelves:shop.shelves,carrying:shop.carrying,basket:shop.basket,scanned:shop.scanned,confirmed:shop.confirmed,cashReceived:shop.cashReceived,change:shop.change,coins:shop.coins,served:shop.served,open:shop.open,closed:shop.closed,remaining:shop.remaining};
 }
 export type SessionData=ReturnType<typeof snapshot>;
 export function validSession(value:unknown):value is SessionData{
  if(!value||typeof value!=='object')return false;const v=value as SessionData;
+ if(v.narrative!==undefined&&!validNarrative(v.narrative))return false;
  if(v.flow!==undefined&&!validFlow(v.flow))return false;
  if(v.business!==undefined&&!validBusiness(v.business))return false;
  if(v.version!==1||!point(v.player)||!point(v.customer)||!['outside','shopping','waiting-stock','queueing','leaving','gone'].includes(v.customerState))return false;
@@ -31,7 +33,8 @@ export function validSession(value:unknown):value is SessionData{
  return true;
 }
 export function restoreSession(v:SessionData):ShopSimulation{
- const shop=new ShopSimulation();for(const key of Object.keys(snapshot(shop))){if(key==='version'||key==='business'||key==='flow'||key==='tutorialDay')continue;Object.assign(shop,{[key]:structuredClone(v[key as keyof SessionData])});}shop.warehouse.rice??=0;shop.shelves.rice??=0;shop.business=v.business?new Business(v.business):new Business();if(!v.business)shop.business.importLegacy(shop.coins,shop.served);
+ const shop=new ShopSimulation();for(const key of Object.keys(snapshot(shop))){if(key==='version'||key==='business'||key==='flow'||key==='tutorialDay'||key==='narrative')continue;Object.assign(shop,{[key]:structuredClone(v[key as keyof SessionData])});}shop.warehouse.rice??=0;shop.shelves.rice??=0;shop.business=v.business?new Business(v.business):new Business();if(!v.business)shop.business.importLegacy(shop.coins,shop.served);
+ shop.narrative=new Narrative(v.narrative);
  shop.tutorialDay=v.tutorialDay===true;
  shop.flow=v.flow?structuredClone(v.flow):freshFlow();
  if(!v.flow&&(shop.open||shop.closed)){
@@ -43,7 +46,7 @@ export function restoreSession(v:SessionData):ShopSimulation{
  }
  // The register now has a real staff side. Relocate only positions covered by its new collision.
  const safe=(p:Point)=>{if(canStand(p))return p;for(let r=1;r<20;r++)for(let y=1;y<19;y++)for(let x=1;x<15;x++){const q={x:x*32+16,y:y*32+16};if(Math.hypot(q.x-p.x,q.y-p.y)<=r*32&&canStand(q))return q;}return{x:240,y:496};};
- shop.player=safe(shop.player);for(const visitor of shop.flow.visitors){visitor.position=safe(visitor.position);visitor.path=[];}
+ shop.player=safe(shop.player);for(const visitor of shop.flow.visitors){const position=safe(visitor.position);if(!v.flow||position!==visitor.position)visitor.path=[];visitor.position=position;}
  const known=new Set(Object.keys(snapshot(new ShopSimulation())));shop.preservedSessionFields=Object.fromEntries(Object.entries(v).filter(([key])=>!known.has(key)));return shop;
 }
 export function loadSession(key=SESSION_KEY){return readStore(key,()=>snapshot(new ShopSimulation()),validSession);}

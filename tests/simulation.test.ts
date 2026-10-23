@@ -19,3 +19,4 @@ describe('自动客流、一键结账与队列',()=>{
  });
  it('到达营业建议时间也不强制丢弃排队顾客',()=>{const s=stocked(true);s.startDay();advance(s,()=>s.flow.queue.length===1);s.remaining=0;s.tick(.05);expect(s.closed).toBe(false);expect(s.closeDay()).toBe(false);expect(s.served).toBe(0);});
 });
+it('旧已离店订单迁移不重复增加客流或收入',()=>{const s=new ShopSimulation(),old=snapshot(s) as Record<string,unknown>;delete old.flow;old.open=true;old.served=1;old.coins=8;old.customerState='gone';old.shoppingList=['milk'];old.shoppingIndex=1;old.basket=['milk'];const loaded=restoreSession(old as ReturnType<typeof snapshot>);expect(loaded.flow.plan).toHaveLength(1);expect(loaded.departedCount).toBe(1);expect(loaded.insideCount).toBe(0);expect(loaded.coins).toBe(8);expect(loaded.canClose).toBe(true);});
