@@ -1,5 +1,5 @@
 import content from '../data/tutorial.json';
-import { center, ENTRANCE_SPOT, fixtures, type Point, type ShopSimulation } from './world';
+import { center, NOTEBOOK_SPOT, fixtures, type Point, type ShopSimulation } from './world';
 import { readStore, writeStore } from './persistence';
 export { content as tutorialContent };
 export const TUTORIAL_KEY='puppy-mart.tutorial.v1';
@@ -29,9 +29,9 @@ export class Tutorial {
  target(shop:ShopSimulation):Point|null{
   if(!this.active)return null;
   if(this.step===0)return center(7,16);
-  if(this.step===1)return center(7,12);
-  if(this.step===4)return shop.open?fixtures.find(f=>f.id==='counter')!.spot:ENTRANCE_SPOT;
-  if(this.step===6)return ENTRANCE_SPOT;
+  if(this.step===1)return NOTEBOOK_SPOT;
+  if(this.step===4)return shop.open?fixtures.find(f=>f.id==='counter')!.spot:null;
+  if(this.step===6)return null;
   const id=this.step===2?'warehouse':this.step===3?'milk':this.step===4?'counter':this.step===5?'counter':null;
   return id?fixtures.find(f=>f.id===id)!.spot:shop.player;
  }

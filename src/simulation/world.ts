@@ -16,7 +16,7 @@ export const fixtures = [
   { id: 'counter', x: 9, y: 15, w: 3, h: 1, label: '收银台', spot: center(10, 16) },
 ] as const;
 export type FixtureId = typeof fixtures[number]['id'] | 'notebook' | 'entrance';
-export const NOTEBOOK_SPOT=center(7,12);
+export const NOTEBOOK_SPOT=center(8,16);
 export const ENTRANCE_SPOT=center(7,18);
 export function blocked(x: number, y: number) {
   return x < 1 || y < 1 || x >= WIDTH - 1 || y >= HEIGHT - 1 || fixtures.some(f => x >= f.x && x < f.x + f.w && y >= f.y && y < f.y + f.h);

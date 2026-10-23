@@ -58,8 +58,11 @@ export class SimulationScene extends Phaser.Scene {
       if(f.id!=='counter')this.label(x+w/2,y+h+10,f.label);
       zones.lineStyle(1,0x7f9e8c,.7).strokeCircle(f.spot.x,f.spot.y,12);
     }
-    const book=this.add.graphics().setDepth(450);book.fillStyle(0x70523d).fillRect(226,398,18,14).fillStyle(0xe9d7ad).fillRect(228,399,14,10).fillStyle(0x9b7353).fillRect(235,399,1,10);
-    this.label(240,386,'员工须知', '#70523d');
+    const desk=fixtures.find(f=>f.id==='counter')!;
+    const bookX=desk.x*TILE+6,bookY=desk.y*TILE+4;
+    const book=this.add.graphics().setDepth((desk.y+desk.h)*TILE-9);
+    book.fillStyle(0x70523d).fillRect(bookX,bookY,18,14).fillStyle(0xe9d7ad).fillRect(bookX+2,bookY+1,14,10).fillStyle(0x9b7353).fillRect(bookX+9,bookY+1,1,10);
+    this.label(bookX+9,bookY-10,'员工须知','#70523d');
     this.label(416,545,'店员侧','#476966');this.label(408,435,'顾客排队','#476966');
     this.flower=this.add.graphics().setDepth(450);this.flower.fillStyle(0x99734d).fillRect(357,487,10,8).fillStyle(0x6c986f).fillRect(361,475,2,13).fillStyle(0xd8a39d).fillRect(358,473,8,6);
     this.guide=this.add.graphics().setDepth(1500);
