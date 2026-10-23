@@ -11,6 +11,8 @@ import { type Goods } from './world';
 import { LayoutController } from './layout';
 import './style.css';
 import './layout.css';
+import './immersive.css';
+import { mountFloatingJoystick } from './floating-joystick';
 const layout=new LayoutController();
 const sound=new Sound();let lastFeedback=0;let toastTimer=0;
 const panel=document.querySelector<HTMLElement>('#controls')!;
@@ -24,13 +26,13 @@ const storedSession=loadSession(sessionKey);
 let s=restoreSession(storedSession.value);scene.shop=s;
 let hasSession=false;try{hasSession=localStorage.getItem(sessionKey)!==null&&storedSession.writable;}catch{}
 const tutorial=new Tutorial(training?'puppy-mart.tutorial-replay.v1':undefined,hasSession);
-let notebookPage=0;
+let notebookPage=0;let selectedGoods:Goods='milk';
 function saveProgress(){if(entered){if(!writeStore(sessionKey,snapshot(s),storedSession.writable)&&storedSession.writable)saveNotice='当前浏览器无法保存进度，请勿关闭页面。';tutorial.save();}}
 function nextDay(){s=s.nextDay()??s;scene.shop=s;s.message='新的一天：'+(s.business.level>=2?'饭团已解锁，去仓库采购并放到冰柜货位。':'补货后接待顾客，完成目标可积累经验。');dialog=null;scene.modal=false;paused=false;scene.paused=false;lastSignature='';saveProgress();render();}
 
 const game=new Phaser.Game({type:Phaser.AUTO,parent:'game',width:430,height:420,pixelArt:true,backgroundColor:'#efdfc2',scale:{mode:Phaser.Scale.RESIZE,autoCenter:Phaser.Scale.CENTER_BOTH},scene:[scene],audio:{noAudio:true}});
 const escape=(text:string)=>text.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]!)).replaceAll(String.fromCharCode(34),'&quot;').replaceAll(String.fromCharCode(39),'&#39;');
-let entered=false,managerName=loadName(),dialog:'warehouse'|'register'|'notebook'|null=null,lastSignature='',saveNotice='';
+let entered=false,managerName=loadName(),dialog:'warehouse'|'register'|'notebook'|'stock'|'inventory'|'tasks'|'closing'|null=null,lastSignature='',saveNotice='';
 let paused=false;
 let resetJoystick: () => void = () => {};
 function resetMovement(){scene.resetInput();resetJoystick();}
@@ -44,27 +46,29 @@ function render(){
  if(dialog==='register'&&!s.atRegister)dismissDialog();
  if(tutorial.observe(s))saveProgress();
  scene.guideTarget=tutorial.target(s);scene.highlightPlayer=tutorial.active&&tutorial.step===0;
- scene.modal=!!dialog||layout.open;
+ scene.modal=!!dialog||layout.open||s.closed;
  document.body.classList.toggle('sim-dialog-open',!!dialog||layout.open);
- const signature=JSON.stringify([s.nearby,s.warehouse,s.shelves,s.carrying,s.customerState,s.path.length===0,s.basket,s.scanned,s.confirmed,s.cashReceived,s.change,s.coins,s.served,s.open,s.closed,Math.ceil(s.remaining),s.message,dialog,paused,tutorial.record,notebookPage,s.business.data,s.feedbackRevision,sound.enabled,layout.open]);
+ const signature=JSON.stringify([s.nearby,s.warehouse,s.shelves,s.carrying,s.customerState,s.path.length===0,s.basket,s.scanned,s.confirmed,s.cashReceived,s.change,s.coins,s.served,s.open,s.closed,Math.ceil(s.remaining),s.message,dialog,paused,tutorial.record,notebookPage,selectedGoods,s.business.data,s.feedbackRevision,sound.enabled,layout.open]);
  if(s.feedbackRevision!==lastFeedback){lastFeedback=s.feedbackRevision;const toast=document.querySelector<HTMLElement>('#feedback-toast');clearTimeout(toastTimer);toast?.classList.remove('show');if(s.feedbackRevision>0){if(toast){toast.textContent=s.feedback;void toast.offsetWidth;toast.classList.add('show');toastTimer=window.setTimeout(()=>toast.classList.remove('show'),2800);}sound.play(s.feedback.startsWith('扫描')?'scan':'sale');}}
  if(signature===lastSignature)return;lastSignature=signature;
- const padButton=document.querySelector<HTMLButtonElement>('.interact-pad');
- if(padButton){padButton.disabled=paused||!!dialog||s.closed;padButton.textContent=s.nearby==='notebook'?'员工须知':s.nearby==='freezer'&&s.business.level>=2?'饭团冰柜':fixtures.find(f=>f.id===s.nearby)?.label??'靠近互动';}
- if(s.closed){scene.modal=false;panel.innerHTML=`<div class="eyebrow">CLOSED · 经营结算</div>${growthSummary(s)}${tutorial.active?`<aside class="tutorial-card"><b>${escape(tutorial.text?.title??'')}</b><p>${escape(tutorial.text?.text??'')}</p></aside>`:''}<button class="primary wide" data-do="next-day">${tutorial.active?'完成教程，开始自由经营':'开始下一天'}</button><button data-do="replay">重新学习</button><a href="?mode=classic">经典模式</a>`;return;}
- const near=s.nearby==='notebook'?{label:'员工须知'}:fixtures.find(f=>f.id===s.nearby);
- const customer={outside:s.open?'等待有库存商品':'尚未开店',shopping:'顾客正在购物', 'waiting-stock':'顾客等待补货',queueing:s.path.length?'顾客前往收银台':'顾客等待结账',leaving:'顾客正在离店',gone:'顾客已离店'}[s.customerState];
- panel.innerHTML=`<div class="sim-head"><b>${training?'练习 · ':''}店长 · ${escape(managerName)}</b><span>Lv.${s.business.level} · 第${s.business.data.day}天 · ${s.business.data.balance} 资金 · ${s.business.data.xp} XP${s.business.nextLevel?' / '+s.business.nextLevel.xp:''} · ${s.open?Math.ceil(s.remaining)+'s':'开店准备'} · ${s.coins} 销售</span></div>${saveNotice?`<p class="muted">${saveNotice}</p>`:''}${tutorial.active?`<aside class="tutorial-card" aria-label="新手引导"><b>${escape(tutorial.text?.title??'')}</b><p>${escape(tutorial.text?.text??'')}</p><button data-do="skip-tutorial">跳过教程</button></aside>`:''}<p class="sim-status" data-testid="customer-status">${customer}</p><p class="sim-inventory" data-testid="stock">牛奶 ${s.shelves.milk}/6 · 面包 ${s.shelves.bread}/6 · 手持：${s.carrying?goodsName(s.carrying.goods)+' ×'+s.carrying.quantity:'无'}${s.business.level>=2?' · 饭团 '+s.shelves.rice+'/6':''}</p><p class="hint" role="status">${escape(s.message)}</p><div class="sim-actions">${!s.open?'<button class="primary" data-do="open">开店</button>':''}<button data-do="interact" ${!near||paused?'disabled':''}>${near?'互动：'+near.label:'靠近圆圈互动'} · E</button><button data-do="pause">${paused?'继续':'暂停'}</button>${s.customerState==='gone'?'<button data-do="next-customer">接待下一位</button><button data-do="close-day">打烊结算</button>':''}</div><div class="sim-actions"><button data-do="notebook">员工须知</button><button data-do="replay">重新学习</button>${training?'<a href="./">返回正式经营</a>':''}<button data-do="sound">音效：${sound.enabled?'开':'关'}</button></div>${goalList(s)}<div id="dialog" ${dialog?'role="dialog" aria-modal="true" aria-label="店铺互动"':''}>${dialogContent()}</div><p class="muted">摇杆 / WASD / 方向键移动，E 互动。视角跟随店长。<br>左上仓库 · 中间双货架 · 右下收银台 · 下方入口</p>`;
+ const action=contextAction();
+ panel.innerHTML=`<div class="compact-hud"><span>第${s.business.data.day}天</span><b>◈ ${s.business.data.balance}</b><span>客流 ${s.served} · ${s.open?Math.ceil(s.remaining)+'s':'准备'}</span><nav><button data-do="tasks" aria-label="任务">✓</button><button data-do="inventory" aria-label="库存">▦</button><button data-do="notebook" aria-label="员工须知">▤</button><button data-do="settings" id="layout-settings" aria-label="设置">⚙</button></nav></div>${tutorial.active&&!s.closed?`<aside class="guide-chip" aria-label="新手引导"><span>${String(tutorial.step+1).padStart(2,'0')} · ${escape(tutorial.text?.short??tutorial.text?.title??'')}</span><button data-do="skip-tutorial">跳过</button></aside>`:''}${paused?'<div class="pause-chip"><button data-do="pause">继续经营</button></div>':''}${saveNotice?`<p class="save-warning">${escape(saveNotice)}</p>`:''}${action&&!dialog&&!paused&&!layout.open&&!s.closed?`<button class="interact-pad" data-do="interact" aria-label="${action}">${action}<small>E</small></button>`:''}<div id="dialog" ${dialog||s.closed?'role="dialog" aria-modal="true" aria-label="店铺互动"':''}>${s.closed?`<section class="sim-dialog summary-sheet"><div class="dialog-heading"><h2>营业结算</h2><button class="primary" data-do="next-day">${tutorial.active?'完成教程':'开始下一天'}</button></div>${growthSummary(s)}</section>`:dialogContent()}</div>`;
 }
+function contextAction(){switch(s.nearby){case 'notebook':return '阅读';case 'warehouse':return '拿货';case 'milk':case 'bread':return '补货';case 'freezer':return s.business.level>=2?'补货':null;case 'counter':return s.atRegister?'收银':null;case 'entrance':return !s.open?'开店':s.customerState==='gone'||s.customerState==='outside'?'打烊':null;default:return null;}}
+function heading(title:string){return `<div class="dialog-heading"><h2>${title}</h2><button data-do="dismiss">返回店铺</button></div>`;}
 function dialogContent(){
  if(dialog==='notebook'){
-  const page=tutorialContent.pages[notebookPage];
-  return `<section class="sim-dialog notebook" aria-label="员工须知"><div class="dialog-heading"><h2>员工须知</h2><button data-do="dismiss">返回店铺</button></div><article class="notebook-page" key="${notebookPage}"><small>${escape(page.handwriting)} · ${notebookPage+1} / ${tutorialContent.pages.length}</small><h2>${escape(page.title)}</h2><p>${escape(page.text)}</p><p class="hand-note">※ ${escape(page.note)}</p></article><div class="sim-actions"><button data-do="page-prev" ${notebookPage===0?'disabled':''}>上一页</button><button data-do="page-next" ${notebookPage===tutorialContent.pages.length-1?'disabled':''}>下一页</button></div><p class="muted">${tutorialContent.notice}</p></section>`;
+  const pages=[...tutorialContent.pages,...tutorialContent.steps.map(step=>({title:step.title,text:step.text,note:'跟随场景标记实际操作，完成后自动继续。',handwriting:'教学占位'}))];const page=pages[notebookPage];
+  return `<section class="sim-dialog notebook" aria-label="员工须知"><div class="dialog-heading"><h2>员工须知</h2><button data-do="dismiss">返回店铺</button></div><article class="notebook-page" key="${notebookPage}"><small>${escape(page.handwriting)} · ${notebookPage+1} / ${(tutorialContent.pages.length+tutorialContent.steps.length)}</small><h2>${escape(page.title)}</h2><p>${escape(page.text)}</p><p class="hand-note">※ ${escape(page.note)}</p></article><div class="sim-actions"><button data-do="page-prev" ${notebookPage===0?'disabled':''}>上一页</button><button data-do="page-next" ${notebookPage===(tutorialContent.pages.length+tutorialContent.steps.length)-1?'disabled':''}>下一页</button></div><p class="muted">${tutorialContent.notice}</p></section>`;
  }
 
  const pauseNotice=paused?'<p role="status">游戏已暂停 <button data-do="pause">继续操作</button></p>':'';
- if(dialog==='warehouse')return `<section class="sim-dialog" aria-label="仓库取货"><div class="dialog-heading"><h2>仓库 · 每箱 3 件</h2><button data-do="dismiss">返回店铺</button></div>${pauseNotice}<p>可用资金 ${s.business.data.balance} 金币</p>${s.business.unlocked.map(id=>`<div class="warehouse-row"><b>${goodsName(id)} · 仓库 ${s.warehouse[id]} 件</b><p>进价 ${s.business.cost(id)} / 售价 ${products.find(p=>p.id===id)!.price} / 单件毛利 ${products.find(p=>p.id===id)!.price-s.business.cost(id)}</p><div class="sim-actions"><button data-do="take-${id}">取${goodsName(id)}箱</button><button data-do="buy-${id}">采购${goodsName(id)}箱 · ${s.business.cost(id)*3}</button></div></div>`).join('')}<p class="muted">${s.business.level<2?'Lv.2 解锁冰柜饭团货位。':''}每箱三件；采购扣资金，取箱仅转移已有库存。</p><button data-do="return">放回货箱</button></section>`;
- if(dialog==='register')return `<section class="sim-dialog" aria-label="收银操作"><div class="dialog-heading"><h2>收银台 · 现金结账</h2><button data-do="dismiss">暂离收银台</button></div>${pauseNotice}<div class="register-items"><ol>${s.basket.map((id,i)=>`<li>${goodsName(id)} · ${products.find(p=>p.id===id)!.price} 金币 ${i<s.scanned?'✓ 已扫描':'待扫描'}</li>`).join('')}</ol><p>已扫描 ${s.scanned}/${s.basket.length} · 已扫描金额 ${s.basket.slice(0,s.scanned).reduce((n,id)=>n+products.find(p=>p.id===id)!.price,0)} · 合计 ${s.total} 金币</p></div><div class="register-payment"><div class="sim-actions"><button data-do="scan" ${s.confirmed||s.scanned===s.basket.length?'disabled':''}>扫描下一件</button><button data-do="confirm" ${s.scanned!==s.basket.length||s.confirmed?'disabled':''}>确认总价</button><button data-do="cash" ${!s.confirmed||s.cashReceived?'disabled':''}>收现金 ${s.tender}</button></div>${s.cashReceived?`<p>应找零 ${s.changeDue} 金币 · 已放零钱 <b data-testid="change">${s.change}</b></p><div class="sim-actions"><button data-do="change-1">+1</button><button data-do="change-2">+2</button><button data-do="change-5">+5</button><button data-do="clear-change">清空零钱</button></div><button class="primary wide" data-do="finish">交付找零，完成交易</button>`:''}</div><p class="muted">操作界面暂停营业计时。暂离后扫描进度保留。</p></section>`;
+ if(dialog==='stock')return `<section class="sim-dialog">${heading(goodsName(selectedGoods)+'货架')}<p>货架 ${s.shelves[selectedGoods]}/6 · 手持 ${s.carrying?goodsName(s.carrying.goods)+' ×'+s.carrying.quantity:'无'}</p><p>从仓库拿取对应货箱后才能补货。</p><button class="primary wide" data-do="restock">确认补货</button><p role="status">${escape(s.message)}</p></section>`;
+ if(dialog==='inventory')return `<section class="sim-dialog">${heading('库存与手持货箱')}<p>手持：${s.carrying?goodsName(s.carrying.goods)+' ×'+s.carrying.quantity:'无'}</p>${s.business.unlocked.map(id=>`<p>${goodsName(id)}：仓库 ${s.warehouse[id]} · 货架 ${s.shelves[id]}/6</p>`).join('')}<p>拿货请前往仓库，补货请靠近对应货架。</p></section>`;
+ if(dialog==='tasks')return `<section class="sim-dialog">${heading('今日目标')}<p>店铺 Lv.${s.business.level} · ${s.business.data.xp} XP${s.business.nextLevel?' / '+s.business.nextLevel.xp:''}</p>${goalList(s).replace('<details','<details open')}<p>客流：${s.served} 单 · ${escape(s.message)}</p>${s.customerState==='gone'&&!tutorial.active?'<button data-do="next-customer">接待下一位</button>':''}<p>开店与打烊请走到入口。</p></section>`;
+ if(dialog==='closing')return `<section class="sim-dialog">${heading('结束今天的营业？')}<p>已完成 ${s.served} 单，销售额 ${s.coins}。打烊后查看成本、利润与明日目标。</p><button class="primary wide" data-do="close-day">打烊结算</button></section>`;
+ if(dialog==='warehouse')return `<section class="sim-dialog" aria-label="仓库取货">${heading('仓库 · 每箱 3 件')}${pauseNotice}<div class="sim-actions">${s.business.unlocked.map(id=>`<button data-do="select-${id}" aria-pressed="${id===selectedGoods}">${goodsName(id)}</button>`).join('')}</div><p>${goodsName(selectedGoods)} · 仓库 ${s.warehouse[selectedGoods]} 件 · 资金 ${s.business.data.balance}</p><p>进价 ${s.business.cost(selectedGoods)} / 售价 ${products.find(p=>p.id===selectedGoods)!.price}</p><div class="sim-actions"><button data-do="take-${selectedGoods}">取${goodsName(selectedGoods)}箱</button><button data-do="buy-${selectedGoods}">采购一箱 · ${s.business.cost(selectedGoods)*3}</button><button data-do="return">放回货箱</button></div><p role="status">${escape(s.message)}</p></section>`;
+ if(dialog==='register')return `<section class="sim-dialog" aria-label="收银操作"><div class="dialog-heading"><h2>收银台 · 现金结账</h2><button data-do="dismiss">暂离收银台</button></div>${pauseNotice}<div class="register-items"><ol>${s.basket.map((id,i)=>`<li>${goodsName(id)} · ${products.find(p=>p.id===id)!.price} 金币 ${i<s.scanned?'✓ 已扫描':'待扫描'}</li>`).join('')}</ol><p>已扫描 ${s.scanned}/${s.basket.length} · 已扫描金额 ${s.basket.slice(0,s.scanned).reduce((n,id)=>n+products.find(p=>p.id===id)!.price,0)} · 合计 ${s.total} 金币</p></div><div class="register-payment"><p role="status">${escape(s.message.startsWith('请逐件')?s.message:'逐件扫描，确认总价后收款和找零。')}</p><div class="sim-actions"><button data-do="scan" ${s.confirmed||s.scanned===s.basket.length?'disabled':''}>扫描下一件</button><button data-do="confirm" ${s.scanned!==s.basket.length||s.confirmed?'disabled':''}>确认总价</button><button data-do="cash" ${!s.confirmed||s.cashReceived?'disabled':''}>收现金 ${s.tender}</button></div>${s.cashReceived?`<p>应找零 ${s.changeDue} 金币 · 已放零钱 <b data-testid="change">${s.change}</b></p><div class="sim-actions"><button data-do="change-1">+1</button><button data-do="change-2">+2</button><button data-do="change-5">+5</button><button data-do="clear-change">清空零钱</button></div><button class="primary wide" data-do="finish">交付找零，完成交易</button>`:''}</div><p class="muted">操作界面暂停营业计时。暂离后扫描进度保留。</p></section>`;
  return '';
 }
 function interact(){
@@ -72,12 +76,13 @@ function interact(){
  // Do not reset Phaser's E key while its keydown is being dispatched.
  if(s.nearby==='notebook'){dialog='notebook';notebookPage=0;tutorial.observe(s,'notebook');}
  else if(s.nearby==='warehouse'){dialog='warehouse';scene.modal=true;}
- else if(s.nearby==='milk'||s.nearby==='bread'){if(s.restock(s.nearby))tutorial.observe(s,'restock');}
+ else if(s.nearby==='milk'||s.nearby==='bread'){selectedGoods=s.nearby;dialog='stock';}
  else if(s.nearby==='counter'){
   if(s.atRegister){dialog='register';scene.modal=true;}
   else s.message='顾客还没有到达收银台，请先补齐两种商品。';
  } else if(s.nearby==='stairs')s.message='楼上员工宿舍入口已预留，本次切片暂不开放。';
- else if(s.nearby==='freezer'&&s.business.level>=2){s.restock('rice');}
+ else if(s.nearby==='freezer'&&s.business.level>=2){selectedGoods='rice';dialog='stock';}
+ else if(s.nearby==='entrance'){if(!s.open){if(tutorial.active&&tutorial.step<4)s.message='先按教学标记完成补货。';else{ s.shoppingList=tutorial.active?['milk']:s.business.unlocked;s.startDay();}}else if(s.customerState==='gone'||s.customerState==='outside')dialog='closing';}
  else if(s.nearby==='freezer')s.message='冰柜区域已预留，本次切片仅开放牛奶与面包货架。';
  else if(!s.nearby)s.message='距离互动目标太远，请走到物体前的标记圆圈。';
  if(dialog)resetJoystick();
@@ -85,28 +90,33 @@ function interact(){
 }
 scene.onRefresh=render;scene.onInteract=interact;
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&dialog&&!layout.open){e.preventDefault();dismissDialog();render();}});
+panel.addEventListener('pointerdown',e=>{if((e.target as HTMLElement).closest('[data-do="interact"]')){e.preventDefault();interact();}});
 panel.addEventListener('click',e=>{
- const action=(e.target as HTMLElement).closest<HTMLButtonElement>('button')?.dataset.do;if(!action)return;
+ const action=(e.target as HTMLElement).closest<HTMLButtonElement>('button')?.dataset.do;if(!action)return;if(action==='interact'&&e.detail>0)return;
  resetMovement();
  if(action==='enter'){
   const input=panel.querySelector<HTMLInputElement>('#manager-name')!;managerName=normalizeName(input.value);
   if(!layout.preferences.selected){layout.show('choice');return;}
   if(!managerName){input.setCustomValidity('请先给店长取名。');input.reportValidity();return;}
-  saveNotice=storedSession.warning||tutorial.warning||(saveName(managerName)?'':'名字暂时无法保存；当前仍可游玩。');entered=true;document.querySelector('#app')!.classList.add('playing');scene.activePlay=true;setupJoystick();
+  saveNotice=storedSession.warning||tutorial.warning||(saveName(managerName)?'':'名字暂时无法保存；当前仍可游玩。');entered=true;document.querySelector('#app')!.classList.add('playing');document.body.classList.add('immersive');scene.activePlay=true;setupJoystick();
  }else if(action==='restart'){nextDay();return;}
  else if(action==='pause'){paused=!paused;scene.paused=paused;}
  else if(action==='dismiss')dismissDialog();
  else if(action==='skip-tutorial'){tutorial.skip();s.message='已跳过教程。随时打开员工须知，或选择重新学习。';}
  else if(action==='replay'){const replay=new Tutorial('puppy-mart.tutorial-replay.v1');writeStore(replay.key,{version:1,step:0,status:'active'},replay.writable);const old=loadSession('puppy-mart.training-session.v1');writeStore('puppy-mart.training-session.v1',snapshot(new ShopSimulation()),old.writable);location.href='?training=1';return;}
+ else if(action==='settings'){layout.show();}
+ else if(action==='tasks'||action==='inventory'){dialog=action;}
+ else if(action.startsWith('select-'))selectedGoods=action.slice(7) as Goods;
+ else if(action==='restock'){if(s.restock(selectedGoods)){tutorial.observe(s,'restock');dismissDialog();}}
  else if(action==='notebook'){dialog='notebook';notebookPage=0;tutorial.observe(s,'notebook');}
  else if(action==='sound')sound.toggle();
  else if(action==='page-prev')notebookPage=Math.max(0,notebookPage-1);
- else if(action==='page-next')notebookPage=Math.min(tutorialContent.pages.length-1,notebookPage+1);
- else if(action==='next-day'){tutorial.observe(s,'review');nextDay();return;}
+ else if(action==='page-next')notebookPage=Math.min((tutorialContent.pages.length+tutorialContent.steps.length)-1,notebookPage+1);
+ else if(action==='next-day'){if(tutorial.observe(s,'review'))celebrate();nextDay();return;}
  else if(paused)return;
  else if(action==='open'){if(tutorial.active&&tutorial.step<4)s.message='请先跟随当前教学标记完成移动、阅读、取箱与补货。';else{if(tutorial.active)s.shoppingList=['milk'];else s.shoppingList=s.business.unlocked;s.startDay();}}
  else if(action==='interact'){interact();return;}
- else if(action.startsWith('take-')){const id=action.slice(5) as Goods;if(s.business.unlocked.includes(id)&&s.takeBox(id))tutorial.observe(s,'take');}
+ else if(action.startsWith('take-')){const id=action.slice(5) as Goods;if(s.business.unlocked.includes(id)&&s.takeBox(id)){tutorial.observe(s,'take');dismissDialog();}}
  else if(action.startsWith('buy-')){const id=action.slice(4) as Goods;if(s.business.unlocked.includes(id))s.purchaseBox(id);}
  else if(action==='return')s.returnBox();
  else if(action==='scan')s.scan();
@@ -116,38 +126,26 @@ panel.addEventListener('click',e=>{
  else if(action==='clear-change')s.clearChange();
  else if(action==='finish'){if(s.finishSale())dismissDialog();}
  else if(action==='next-customer'){if(tutorial.active)s.message='教学期间只接待一位，请先打烊完成教程。';else s.nextCustomer();}
- else if(action==='close-day')s.closeDay();
+ else if(action==='close-day'){if(s.nearby==='entrance'&&(s.customerState==='gone'||s.customerState==='outside')){s.closeDay();dismissDialog();}}
  saveProgress();render();
 });
+function celebrate(){const confetti=document.createElement('div');confetti.className='pixel-confetti';confetti.innerHTML=Array.from({length:24},(_,i)=>`<i style="--i:${i};left:${(i*37)%100}%;background:${['#ae744e','#648e7b','#e0bc71'][i%3]}"></i>`).join('');document.body.append(confetti);setTimeout(()=>confetti.remove(),1800);}
 function setupJoystick(){
- const dock=document.createElement('div');dock.className='movement-dock';
- dock.innerHTML='<div class="joystick" role="group" aria-label="移动摇杆"><span class="stick"></span><span class="joystick-label">移动</span></div><button class="interact-pad" aria-label="就近互动">互动<br><small>E</small></button>';
- document.querySelector('#app')!.append(dock);
+ const visual=document.createElement('div');visual.className='joystick';visual.hidden=true;visual.setAttribute('aria-label','浮动移动摇杆');visual.innerHTML='<span class="stick"></span>';gameElement.append(visual);
  const toast=document.createElement('div');toast.id='feedback-toast';toast.setAttribute('role','log');toast.setAttribute('aria-live','polite');document.body.append(toast);
- const pad=dock.querySelector<HTMLElement>('.joystick')!,stick=pad.querySelector<HTMLElement>('.stick')!;
- let pointer:number|null=null;
- function reset(){const previous=pointer;pointer=null;scene.joystick={x:0,y:0};stick.style.transform='translate(0,0)';if(previous!==null&&pad.hasPointerCapture(previous))pad.releasePointerCapture(previous);}
- resetJoystick=reset;
- function point(event:PointerEvent){
-  const r=pad.getBoundingClientRect(),dx=event.clientX-r.left-r.width/2,dy=event.clientY-r.top-r.height/2;
-  const length=Math.hypot(dx,dy),scale=Math.min(1,32/(length||1));
-  scene.joystick={x:length<6?0:dx*scale/32,y:length<6?0:dy*scale/32};stick.style.transform=`translate(${dx*scale}px,${dy*scale}px)`;
- }
- pad.addEventListener('pointerdown',e=>{if(pointer!==null||paused||dialog||layout.open||s.closed)return;pointer=e.pointerId;pad.setPointerCapture(e.pointerId);point(e);e.preventDefault();});
- pad.addEventListener('pointermove',e=>{if(e.pointerId===pointer)point(e);});
- for(const event of ['pointerup','pointercancel','lostpointercapture'])pad.addEventListener(event,(e)=>{if((e as PointerEvent).pointerId===pointer){reset();saveProgress();}});
- dock.querySelector('button')!.addEventListener('pointerdown',e=>{e.preventDefault();interact();});
- dock.querySelector('button')!.addEventListener('click',e=>{if(e.detail===0)interact();});
- window.addEventListener('blur',()=>{reset();if(entered){paused=true;scene.paused=true;render();}});
- document.addEventListener('visibilitychange',()=>{if(document.hidden){reset();paused=true;scene.paused=true;saveProgress();render();}});
+ resetJoystick=mountFloatingJoystick({surface:gameElement,visual,allowed:()=>entered&&!paused&&!dialog&&!layout.open&&!s.closed,size:()=>layout.preferences.joystickSize,sensitivity:()=>layout.preferences.sensitivity,onMove:(x,y)=>scene.joystick={x,y},onRelease:saveProgress});
+ window.addEventListener('blur',()=>{resetMovement();if(entered){paused=true;scene.paused=true;render();}});
+ document.addEventListener('visibilitychange',()=>{if(document.hidden){resetMovement();paused=true;scene.paused=true;saveProgress();render();}});
 }
+
 render();
 setInterval(saveProgress,1000);
 window.addEventListener('pagehide',saveProgress);
 
-const layoutButton=document.createElement('button');layoutButton.id='layout-settings';layoutButton.textContent='布局设置';layoutButton.addEventListener('click',()=>{resetMovement();layout.show();});document.querySelector('header')!.append(layoutButton);
+layout.gameControls=()=>`<div class="sim-actions"><button data-game-action="pause">${paused?'继续经营':'暂停经营'}</button><button data-game-action="sound">音效：${sound.enabled?'开':'关'}</button><button data-game-action="replay">重新学习</button></div>`;
+layout.onGameAction=action=>{if(action==='pause'){paused=!paused;scene.paused=paused;}else if(action==='sound')sound.toggle();else if(action==='replay'){panel.querySelector<HTMLButtonElement>('[data-do="replay"]')?.click();const replay=new Tutorial('puppy-mart.tutorial-replay.v1');writeStore(replay.key,{version:1,step:0,status:'active'},replay.writable);const old=loadSession('puppy-mart.training-session.v1');writeStore('puppy-mart.training-session.v1',snapshot(new ShopSimulation()),old.writable);location.href='?training=1';}saveProgress();render();};
 layout.onChange=()=>{resetMovement();lastSignature='';render();};
 layout.mount();
 let resizeFrame=0;
-const resizeCanvas=()=>{cancelAnimationFrame(resizeFrame);resizeFrame=requestAnimationFrame(()=>{const bounds=gameElement.getBoundingClientRect();const width=Math.floor(bounds.width),height=Math.floor(bounds.height);if(game.isBooted&&width>0&&height>0&&(game.scale.width!==width||game.scale.height!==height)){game.scale.setParentSize(width,height);scene.cameras?.main?.setSize(width,height);}});};
+const resizeCanvas=()=>{cancelAnimationFrame(resizeFrame);resizeFrame=requestAnimationFrame(()=>{const bounds=gameElement.getBoundingClientRect();const width=Math.floor(bounds.width),height=Math.floor(bounds.height);if(game.isBooted&&width>0&&height>0){resetMovement();game.scale.setParentSize(width,height);scene.cameras?.main?.setSize(width,height);scene.cameras?.main?.setZoom(Math.max(1,width/512,height/640));}});};
 new ResizeObserver(resizeCanvas).observe(gameElement);window.addEventListener('resize',resizeCanvas);game.events.once('ready',resizeCanvas);

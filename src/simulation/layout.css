@@ -1,10 +1,5 @@
 :root{--joystick-size:120px;--interaction-size:78px;--joystick-inset:18px}
-#app.playing{padding-top:env(safe-area-inset-top)}
-#app.playing .movement-dock{padding-left:calc(env(safe-area-inset-left) + var(--joystick-inset));padding-right:max(16px,env(safe-area-inset-right));padding-bottom:max(10px,env(safe-area-inset-bottom))}
-#app.playing .joystick{width:var(--joystick-size);height:var(--joystick-size);min-width:var(--joystick-size);min-height:var(--joystick-size)}
-#app.playing .interact-pad{width:var(--interaction-size);height:var(--interaction-size);min-width:var(--interaction-size);min-height:var(--interaction-size)}
 #layout-settings{font-size:12px;min-height:44px;padding:6px 10px;background:#d9e5d9;color:#325d51;letter-spacing:0;flex-shrink:0}
-#app.playing header{padding:0 12px;align-items:center;gap:6px;min-height:44px}
 #rotation-hint:not([hidden]){font-size:12px;background:#f7dba5;color:#62472b;padding:4px 10px;display:flex;gap:8px;align-items:center;justify-content:space-between;flex-shrink:0}
 #rotation-hint button{min-height:44px;padding:6px 10px;flex-shrink:0;font-size:12px;background:#fff0d5}
 body.layout-settings-open{overflow:hidden}
@@ -13,18 +8,7 @@ body.layout-settings-open .movement-dock{visibility:hidden;pointer-events:none}
 .layout-sheet{background:#fff2d8;border:3px double #886446;padding:12px;width:min(100%,600px);max-height:calc(100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom));overflow-y:auto;overscroll-behavior:contain;border-radius:8px;color:#493a32;box-shadow:0 8px 40px #2e241844}
 .layout-choices{display:grid;grid-template-columns:1fr 1fr;gap:10px}.layout-choices button{min-height:94px;background:#e6d6b4;border:2px solid #b7a17e;padding:10px;color:#493a32}.layout-choices b{display:block;font-size:20px}.layout-choices span{display:block;font-size:12px;margin-top:6px}.layout-choices button[aria-pressed=true]{background:#456f63;color:#fff8dd;border-color:#294f43}
 .layout-fields{display:grid;grid-template-columns:1fr;gap:10px}.layout-fields label{font-size:14px}.layout-fields select{display:block;width:100%;min-height:44px;font:inherit;margin-top:5px;border:2px solid #c4ac84;border-radius:6px;background:#fffaee;color:#493a32;padding:6px}
-/* Landscape has a full-height map, a scrollable right-hand management panel,
-   and independent left/right touch controls. No rotated or stretched canvas. */
-body[data-orientation=landscape] #app{max-width:1200px}
 body[data-orientation=landscape] #app:not(.playing) #game{display:none}
-body[data-orientation=landscape] #app.playing{position:relative;display:grid;grid-template-columns:minmax(0,1fr) 252px;grid-template-rows:auto minmax(0,1fr);padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
-body[data-orientation=landscape] #app.playing header{grid-column:1/-1;grid-row:1}
-body[data-orientation=landscape] #app.playing #game{grid-column:1;grid-row:2;min-width:0;min-height:0;width:100%;height:100%;border-right:2px solid #bca47e}
-body[data-orientation=landscape] #app.playing #controls{grid-column:2;grid-row:2;min-height:0;max-height:none;height:100%;padding:8px 10px calc(var(--interaction-size) + 30px + env(safe-area-inset-bottom));overflow-y:auto}
-body[data-orientation=landscape] #app.playing .movement-dock{position:absolute;inset:0;pointer-events:none;background:none;border:0;padding:0;z-index:10}
-body[data-orientation=landscape] #app.playing .joystick{position:absolute;left:calc(env(safe-area-inset-left) + var(--joystick-inset));bottom:max(12px,env(safe-area-inset-bottom));pointer-events:auto;box-shadow:0 3px 9px #423b3030}
-body[data-orientation=landscape] #app.playing .interact-pad{position:absolute;right:max(16px,env(safe-area-inset-right));bottom:max(12px,env(safe-area-inset-bottom));pointer-events:auto}
-body[data-orientation=landscape] #rotation-hint:not([hidden]){position:absolute;top:46px;left:12px;max-width:calc(100% - 276px);z-index:20;border:1px solid #bb9659;border-radius:6px}
 body[data-orientation=landscape] #dialog .sim-dialog{width:min(860px,100%);max-height:calc(100dvh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom))}
 body[data-orientation=landscape] .sim-dialog[aria-label="仓库取货"]{display:grid;grid-template-columns:1fr 1fr;column-gap:16px}
 body[data-orientation=landscape] .sim-dialog[aria-label="仓库取货"]>.dialog-heading,body[data-orientation=landscape] .sim-dialog[aria-label="仓库取货"]>p,body[data-orientation=landscape] .sim-dialog[aria-label="仓库取货"]>button{grid-column:1/-1}
@@ -35,4 +19,3 @@ body[data-orientation=landscape] .sim-dialog[aria-label="收银操作"]{display:
 body[data-orientation=landscape] .sim-dialog[aria-label="收银操作"]>.dialog-heading,body[data-orientation=landscape] .sim-dialog[aria-label="收银操作"]>.muted{grid-column:1/-1}
 body[data-orientation=landscape] .layout-sheet{width:min(800px,100%)}
 body[data-orientation=landscape] .layout-fields{grid-template-columns:repeat(3,1fr)}
-@media(max-height:350px) and (orientation:landscape){body[data-orientation=landscape] #app.playing header{min-height:44px}body[data-orientation=landscape] #app.playing{grid-template-columns:minmax(0,1fr) 220px}}

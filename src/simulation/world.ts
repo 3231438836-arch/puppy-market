@@ -1,3 +1,4 @@
+import { selectInteraction } from './interaction';
 import { Business } from './business';
 import products from '../data/products.json' with { type: 'json' };
 export const TILE = 32, WIDTH = 16, HEIGHT = 20;
@@ -12,8 +13,9 @@ export const fixtures = [
   { id: 'stairs', x: 9, y: 1, w: 2, h: 2, label: '员工宿舍 ↑', spot: center(9, 3) },
   { id: 'counter', x: 8, y: 13, w: 3, h: 1, label: '收银台', spot: center(9, 12) },
 ] as const;
-export type FixtureId = typeof fixtures[number]['id'] | 'notebook';
+export type FixtureId = typeof fixtures[number]['id'] | 'notebook' | 'entrance';
 export const NOTEBOOK_SPOT=center(7,12);
+export const ENTRANCE_SPOT=center(7,18);
 export function blocked(x: number, y: number) {
   return x < 1 || y < 1 || x >= WIDTH - 1 || y >= HEIGHT - 1 || fixtures.some(f => x >= f.x && x < f.x + f.w && y >= f.y && y < f.y + f.h);
 }
@@ -59,6 +61,8 @@ export class ShopSimulation {
   stockRevision=0;
   private announce(text:string){this.feedback=text;this.feedbackRevision++;}
   player = center(7, 15);
+  facing={x:0,y:1};
+  private lastInteraction:string|null=null;
   customer = center(7, 18);
   customerState: CustomerState = 'outside';
   path: Point[] = [];
@@ -82,9 +86,13 @@ export class ShopSimulation {
   get total() { return this.basket.reduce((sum, id) => sum + products.find(p => p.id === id)!.price, 0); }
   get tender() { return Math.max(20,Math.ceil(this.total/10)*10); }
   get changeDue() { return this.tender - this.total; }
-  get nearby() { if(Math.hypot(this.player.x-NOTEBOOK_SPOT.x,this.player.y-NOTEBOOK_SPOT.y)<=30)return 'notebook';return fixtures.find(f => Math.hypot(this.player.x - f.spot.x, this.player.y - f.spot.y) <= 45)?.id ?? null; }
+  get nearby():FixtureId|null {
+    this.lastInteraction=selectInteraction(this.player,this.facing,[...fixtures.map(f=>({id:f.id,...f.spot,range:45})),{id:'notebook',...NOTEBOOK_SPOT,range:30},{id:'entrance',...ENTRANCE_SPOT,range:42}],this.lastInteraction);
+    return this.lastInteraction as FixtureId|null;
+  }
   movePlayer(x: number, y: number, seconds: number) {
     if (this.closed) return;
+    if(x||y)this.facing=Math.abs(x)>Math.abs(y)?{x:Math.sign(x),y:0}:{x:0,y:Math.sign(y)};
     const length = Math.hypot(x, y);
     if (length > 0) this.player = move(this.player, x / Math.max(1, length) * 112 * seconds, y / Math.max(1, length) * 112 * seconds);
   }

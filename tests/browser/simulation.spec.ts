@@ -1,64 +1,19 @@
-import { test, expect, type Page } from '@playwright/test';
-import { findPath, center, type Point } from '../../src/simulation/world';
-import { position, walk } from './helpers';
-test('走动、两次取箱补货、顾客购物、扫描找零、离店结算',async({page})=>{
- test.setTimeout(100000);const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('/');
- await page.getByLabel('给吉娃娃店长取个名字').fill('小栗');await page.getByRole('button',{name:'进入便利店 →'}).click();await page.getByRole('button',{name:'跳过教程'}).click();
- await expect(page.locator('.joystick')).toBeVisible();
- for(const goods of ['milk','bread'] as const){
-  await walk(page,center(2,4));await page.getByRole('button',{name:'互动：仓库 · E',exact:true}).click();
-  await page.getByRole('button',{name:goods==='milk'?'取牛奶箱':'取面包箱'}).click();await page.getByRole('button',{name:'返回店铺'}).click();
-  await expect(page.getByTestId('stock')).toContainText('×3');
-  await walk(page,goods==='milk'?center(4,9):center(10,9));await page.keyboard.press('e');
-  await expect(page.getByRole('status')).toContainText('补货完成');
- }
- await page.getByRole('button',{name:'开店',exact:true}).click();await walk(page,center(9,12));await expect(page.getByTestId('customer-status')).toHaveText('顾客等待结账',{timeout:20000});
- await page.getByRole('button',{name:'互动：收银台 · E',exact:true}).click();
- const exit=page.getByRole('button',{name:'暂离收银台'});expect(await exit.evaluate(el=>{const r=el.getBoundingClientRect();return el.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2));})).toBe(true);
- await page.getByRole('button',{name:'扫描下一件'}).click();await exit.click();await page.getByRole('button',{name:'互动：收银台 · E',exact:true}).click();
- await expect(page.getByRole('region',{name:'收银操作'})).toContainText('已扫描 1/2');await page.getByRole('button',{name:'扫描下一件'}).click();
- await page.getByRole('button',{name:'确认总价'}).click();await page.getByRole('button',{name:'收现金 20'}).click();
- await page.getByRole('button',{name:'+5',exact:true}).click();await page.getByRole('button',{name:'交付找零，完成交易'}).click();
- await expect(page.getByRole('status')).toContainText('正确零钱');await page.getByRole('button',{name:'+1',exact:true}).click();
- await page.getByRole('button',{name:'交付找零，完成交易'}).click();await expect(page.getByRole('status')).toContainText('+14 金币');
- await expect(page.getByTestId('customer-status')).toHaveText('顾客已离店',{timeout:15000});
- await page.screenshot({path:'test-results/simulation-mobile.png',fullPage:true});await page.getByRole('button',{name:'打烊结算'}).click();
- await expect(page.getByRole('heading',{name:'今日打烊'})).toBeVisible();expect(errors).toEqual([]);
-});
-test('移动摇杆拖动与松手、暂停、名字及旧存档不变',async({page})=>{
- await page.goto('/');await page.evaluate(()=>{localStorage.setItem('existing-game-save','keep');localStorage.setItem('puppy-mart.player-profile.v1',JSON.stringify({version:1,preferredName:'栗',futureField:{keep:true}}));});await page.reload();
- await expect(page.getByLabel('给吉娃娃店长取个名字')).toHaveValue('栗');await page.getByRole('button',{name:'进入便利店 →'}).click();await page.getByRole('button',{name:'跳过教程'}).click();
- const original=await position(page),pad=await page.locator('.joystick').boundingBox();expect(pad).not.toBeNull();
- const touch=await page.context().newCDPSession(page);
- await touch.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:pad!.x+pad!.width/2,y:pad!.y+pad!.height/2}]});
- await touch.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:pad!.x+pad!.width-3,y:pad!.y+pad!.height/2}]});
- await page.waitForTimeout(500);await touch.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
- const moved=await position(page);expect(moved.x).toBeGreaterThan(original.x+20);await page.waitForTimeout(200);expect((await position(page)).x).toBeCloseTo(moved.x,0);
- await touch.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:pad!.x+pad!.width/2,y:pad!.y+pad!.height/2}]});
- await touch.send('Input.dispatchTouchEvent',{type:'touchCancel',touchPoints:[]});await page.waitForTimeout(100);expect((await position(page)).x).toBeCloseTo(moved.x,0);
- await page.getByRole('button',{name:'暂停',exact:true}).click();await page.keyboard.down('w');await page.waitForTimeout(250);await page.keyboard.up('w');expect((await position(page)).y).toBeCloseTo(moved.y,0);
- expect(await page.evaluate(()=>localStorage.getItem('existing-game-save'))).toBe('keep');expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('puppy-mart.player-profile.v1')!).futureField)).toEqual({keep:true});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
-});
-
-test('320px 走动模式摇杆与互动位于视口内',async({page})=>{
- await page.setViewportSize({width:320,height:640});await page.goto('/');await page.getByLabel('给吉娃娃店长取个名字').pressSequentially('Wade');await expect(page.getByLabel('给吉娃娃店长取个名字')).toHaveValue('Wade');await page.getByRole('button',{name:'进入便利店 →'}).click();await page.getByRole('button',{name:'跳过教程'}).click();
- const pad=await page.locator('.joystick').boundingBox();expect(pad).not.toBeNull();expect(pad!.y+pad!.height).toBeLessThanOrEqual(640);
- expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await page.screenshot({path:'test-results/simulation-narrow.png',fullPage:true});
-});
-
-for(const viewport of [{width:390,height:844},{width:320,height:640}])test(`手机互动弹窗关闭可达并恢复摇杆 ${viewport.width}px`,async({page})=>{
- test.setTimeout(40000);await page.setViewportSize(viewport);await page.goto('/');await page.getByLabel('给吉娃娃店长取个名字').fill('栗');await page.getByRole('button',{name:'进入便利店 →'}).click();await page.getByRole('button',{name:'跳过教程'}).click();
- await walk(page,center(2,4));await page.getByRole('button',{name:'就近互动',exact:true}).click();
- const close=page.getByRole('button',{name:'返回店铺',exact:true});const bounds=await close.boundingBox();
- await page.screenshot({path:'test-results/warehouse-dialog.png',fullPage:true});
- const unobstructed=await close.evaluate(el=>{const r=el.getBoundingClientRect();const hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);return hit===el||!!hit&&el.contains(hit);});expect(unobstructed).toBe(true);
- expect(bounds).not.toBeNull();expect(bounds!.y).toBeGreaterThanOrEqual(0);expect(bounds!.y+bounds!.height).toBeLessThanOrEqual(viewport.height);
- await page.getByRole('button',{name:'取牛奶箱',exact:true}).click();const closeBounds=await close.boundingBox();await page.touchscreen.tap(closeBounds!.x+closeBounds!.width/2,closeBounds!.y+closeBounds!.height/2);
- const original=await position(page),pad=await page.locator('.joystick').boundingBox();const touch=await page.context().newCDPSession(page);
- await touch.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:pad!.x+pad!.width/2,y:pad!.y+pad!.height/2}]});
- await touch.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:pad!.x+pad!.width-4,y:pad!.y+pad!.height/2}]});
- await page.waitForTimeout(350);await touch.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
- expect((await position(page)).x).toBeGreaterThan(original.x+15);
-});
-
+import {test,expect,type Page} from '@playwright/test';
+import {walk,position} from './helpers';
+import {center} from '../../src/simulation/world';
+export async function enter(page:Page,skip=true){await page.goto('/');await page.getByLabel('给吉娃娃店长取个名字').fill('栗');await page.getByRole('button',{name:'进入便利店 →'}).click();if(skip)await page.getByRole('button',{name:'跳过',exact:true}).click();}
+export async function at(page:Page,x:number,y:number,action:string){await walk(page,center(x,y));await expect(page.getByRole('button',{name:action,exact:true})).toBeVisible({timeout:20000});await page.getByRole('button',{name:action,exact:true}).click();}
 test.beforeEach(async({page})=>{await page.addInitScript(()=>{if(!localStorage.getItem('puppy-mart.layout.v1'))localStorage.setItem('puppy-mart.layout.v1',JSON.stringify({version:1,selected:true,preferred:'portrait',joystickSize:120,buttonSize:78,joystickInset:18}));});});
+test('完整营业、双货架补货、扫描错误找零纠正、入口打烊',async({page})=>{
+ test.setTimeout(110000);const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));await enter(page);
+ for(const [goods,x] of [['牛奶',4],['面包',10]] as const){await at(page,2,4,'拿货');await page.getByRole('button',{name:goods,exact:true}).click();await page.getByRole('button',{name:`取${goods}箱`,exact:true}).click();await expect(page.locator('#dialog .sim-dialog')).toHaveCount(0);await at(page,x,9,'补货');await page.getByRole('button',{name:'确认补货'}).click();}
+ await at(page,7,18,'开店');await at(page,9,12,'收银');await page.getByRole('button',{name:'扫描下一件'}).click();await page.getByRole('button',{name:'暂离收银台'}).click();await page.getByRole('button',{name:'收银',exact:true}).click();await expect(page.locator('.register-items')).toContainText('已扫描 1/2');await page.getByRole('button',{name:'扫描下一件'}).click();await page.getByRole('button',{name:'确认总价'}).click();await page.getByRole('button',{name:'收现金 20'}).click();await page.getByRole('button',{name:'+5',exact:true}).click();await page.getByRole('button',{name:'交付找零，完成交易'}).click();await expect(page.locator('.register-payment')).toContainText('正确零钱');await page.getByRole('button',{name:'+1',exact:true}).click();await page.getByRole('button',{name:'交付找零，完成交易'}).click();await at(page,7,18,'打烊');await page.getByRole('button',{name:'打烊结算'}).click();await expect(page.locator('.ledger')).toContainText('今日经营利润 7');expect(errors).toEqual([]);
+});
+test('浮动摇杆不同触点、边缘、松手、取消、右侧不触发，暂停和旧数据保留',async({page})=>{
+ await enter(page);await expect(page.locator('.joystick')).toBeHidden();const cdp=await page.context().newCDPSession(page),before=await position(page);
+ for(const point of [{x:120,y:650},{x:20,y:400}]){await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{id:1,...point}]});await expect(page.locator('.joystick')).toBeVisible();const b=await page.locator('.joystick').boundingBox();expect(b!.x).toBeGreaterThanOrEqual(0);await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{id:1,x:point.x+35,y:point.y}]});await page.waitForTimeout(250);await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await expect(page.locator('.joystick')).toBeHidden();}
+ expect((await position(page)).x).toBeGreaterThan(before.x+20);const stopped=await position(page);await page.waitForTimeout(150);expect((await position(page)).x).toBeCloseTo(stopped.x,0);
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:340,y:500}]});await expect(page.locator('.joystick')).toBeHidden();await cdp.send('Input.dispatchTouchEvent',{type:'touchCancel',touchPoints:[]});
+ await page.evaluate(()=>localStorage.setItem('legacy-untouched','keep'));await page.getByRole('button',{name:'设置',exact:true}).click();await page.getByRole('button',{name:'暂停经营'}).click();await page.getByRole('button',{name:'返回游戏'}).click();await page.keyboard.down('w');await page.waitForTimeout(200);await page.keyboard.up('w');expect((await position(page)).y).toBeCloseTo(stopped.y,0);expect(await page.evaluate(()=>localStorage.getItem('legacy-untouched'))).toBe('keep');
+});
+for(const width of [320,390])test(`仓库取箱自动关闭后继续移动，无页面滚动 ${width}`,async({page})=>{test.setTimeout(45000);await page.setViewportSize({width,height:844});await enter(page);await at(page,2,4,'拿货');await page.getByRole('button',{name:'取牛奶箱'}).click();const before=await position(page);await page.keyboard.down('d');await page.waitForTimeout(250);await page.keyboard.up('d');expect((await position(page)).x).toBeGreaterThan(before.x+15);const bounds=await page.locator('#game').boundingBox();expect(bounds).toMatchObject({x:0,y:0,width,height:844});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth&&document.documentElement.scrollHeight<=innerHeight)).toBe(true);});
