@@ -1,3 +1,11 @@
+# CUSTOMER_001 开发分支（本轮未部署）
+
+已接入未命名的罗伯罗夫斯基仓鼠「小仓鼠」：自动到店、检查和伸手、帮助、货位下移与保存、独立对话池和审核/冷却。正常入口只使用 approved 内容；给定候选台词仍为 draft，仅在 `?npc-preview=001` 独立预览加载。
+
+本地运行 `npm run dev -- --port 5191`，访问 `http://localhost:5191/?npc-preview=001`。预览不修改正常经营/教程/名字；没有更新正式站点。[实现范围、台词数据、测试方法与缺口](docs/customer001/IMPLEMENTATION.md) · [审计](docs/customer001/AUDIT.md) · [文件清单](docs/customer001/FILES.md)。
+
+---
+
 当前默认游戏：员工须知放在收银台左端，靠近柜台左下侧可阅读。开店／打烊使用顶部专用按钮，无需走到店门；计划顾客全部离店前打烊按钮灰色。[修复说明](docs/COUNTER-CONTROLS.md)。
 
 # 作者工作台（增量基础版）

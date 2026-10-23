@@ -1,0 +1,97 @@
+[
+  {
+    "npcId": "CUSTOMER_001",
+    "dialogueId": "first-high-shelf",
+    "category": "special",
+    "trigger": "shelf",
+    "conditions": {
+      "minVisits": 1,
+      "firstShelfSeen": true
+    },
+    "weight": 1,
+    "cooldown": 0,
+    "once": true,
+    "status": "draft",
+    "enabled": true,
+    "lines": [
+      "哎呀，你们换店员啦？我说呢，刚才进来还以为认错人了。",
+      "哎，你帮我拿一下那个呗？对对，上面那个。",
+      "我跟之前那个说了好几次了，我够不到，他也是一点没管……真是的。"
+    ]
+  },
+  {
+    "npcId": "CUSTOMER_001",
+    "dialogueId": "checkout-price",
+    "category": "daily",
+    "trigger": "checkout",
+    "conditions": {
+      "minVisits": 1
+    },
+    "weight": 5,
+    "cooldown": 2,
+    "once": false,
+    "status": "draft",
+    "enabled": true,
+    "lines": [
+      "这包多少钱来着？噢，行。"
+    ]
+  },
+  {
+    "npcId": "CUSTOMER_001",
+    "dialogueId": "small-sealable-bags",
+    "category": "daily",
+    "trigger": "chat",
+    "conditions": {
+      "minVisits": 1
+    },
+    "weight": 4,
+    "cooldown": 2,
+    "once": false,
+    "status": "draft",
+    "enabled": true,
+    "lines": [
+      "哎，你们那个小号密封袋是不是卖完了？我找了一圈没看见。",
+      "没有就算了，我过几天再来。"
+    ]
+  },
+  {
+    "npcId": "CUSTOMER_001",
+    "dialogueId": "accessible-shelf-followup",
+    "category": "familiar",
+    "trigger": "chat",
+    "conditions": {
+      "minVisits": 2,
+      "shelfAdjusted": true
+    },
+    "weight": 2,
+    "cooldown": 3,
+    "once": false,
+    "status": "draft",
+    "enabled": true,
+    "lines": [
+      "【作者占位：货位调整后的轻量日常反馈，待填写并批准。】"
+    ]
+  },
+  {
+    "npcId": "CUSTOMER_001",
+    "dialogueId": "roommate-shopping-candidate",
+    "category": "special",
+    "trigger": "chat",
+    "conditions": {
+      "minVisits": 2,
+      "flagsAll": [
+        "author_confirmed_roommate_shopping"
+      ]
+    },
+    "weight": 1,
+    "cooldown": 7,
+    "once": true,
+    "status": "draft",
+    "enabled": false,
+    "lines": [
+      "我们今天来买点东西，家里真的什么都快没了。",
+      "哎，不是说什么都没了，那个还有一点。",
+      "反正先买着吧，省得过两天又跑一趟。"
+    ]
+  }
+]

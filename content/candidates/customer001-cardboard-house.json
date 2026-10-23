@@ -1,0 +1,11 @@
+{
+ "itemId":"customer001_cardboard_house",
+ "name":"屋顶有点歪的纸板小房子",
+ "status":"candidate",
+ "acquisitionCondition":null,
+ "autoAward":false,
+ "illustration":"src/art/candidates/cardboard-house-detail.svg",
+ "dormSprite":"src/art/candidates/cardboard-house-pixel.svg",
+ "suggestedPlacement":["desk","bookshelf"],
+ "authorNotes":"双版本素材均为占位，尚无宿舍收藏系统；不写入背包，不表示将来一定赠送。"
+}

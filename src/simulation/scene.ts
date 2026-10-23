@@ -59,7 +59,7 @@ export class SimulationScene extends Phaser.Scene {
       } else if(f.id==='stairs') {
         for(let i=0;i<5;i++)g.fillStyle(i%2?0xb6ad98:0x807c70).fillRect(x+6,y+6+i*10,w-12,7);
       } else {g.lineStyle(2,0xf4f1df).strokeRect(x+5,y+5,w-10,h-10);}
-      if(f.id!=='counter')this.label(x+w/2,y+h+10,f.label);
+      if(!['counter','milk','bread','freezer'].includes(f.id))this.label(x+w/2,y+h+10,f.label);
       zones.lineStyle(1,0x7f9e8c,.7).strokeCircle(f.spot.x,f.spot.y,12);
     }
     const desk=fixtures.find(f=>f.id==='counter')!;

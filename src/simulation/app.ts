@@ -1,3 +1,5 @@
+import hamsterPortrait from '../art/portraits/customer001.svg?url';
+import {installNpcDrafts} from './npc-dialogues';
 import {CUSTOMER_001} from './npc001';
 import portraitNeutral from '../art/portraits/test-regular-neutral.svg?url';
 import portraitSoft from '../art/portraits/test-regular-soft.svg?url';
@@ -27,10 +29,11 @@ gameElement.classList.add('simulation-map');
 document.querySelector('header span')!.textContent='街角便利店 · P1 教学与成长';
 const scene=new SimulationScene();
 const npcPreview=new URLSearchParams(location.search).get('npc-preview')==='001';
+let npcDraftWarning='';const npcDraftsReady=npcPreview?import('../data/npcs/customer-001.dialogues.json').then(m=>installNpcDrafts(m.default)).catch(()=>{npcDraftWarning='草稿未加载；仍可验证取货、货位调整与营业。';}):Promise.resolve();
 const training=new URLSearchParams(location.search).get('training')==='1';
 const sessionKey=npcPreview?'puppy-mart.npc001-preview.v1':training?'puppy-mart.training-session.v1':SESSION_KEY;
 const storedSession=loadSession(sessionKey);
-let s=restoreSession(storedSession.value);scene.shop=s;
+let s=restoreSession(storedSession.value);s.narrative.allowDrafts=npcPreview;scene.shop=s;
 let hasSession=false;try{hasSession=localStorage.getItem(sessionKey)!==null&&storedSession.writable;}catch{}
 if(npcPreview){s.npcPreview=true;if(!hasSession){s.business.data.day=2;s.shelves={milk:6,bread:6,rice:0};}}
 const tutorial=new Tutorial(npcPreview?'puppy-mart.npc001-tutorial-preview.v1':training?'puppy-mart.tutorial-replay.v1':undefined,hasSession);
@@ -41,8 +44,9 @@ function nextDay(){s=s.nextDay()??s;scene.shop=s;s.message='新的一天：'+(s.
 
 const game=new Phaser.Game({type:Phaser.AUTO,parent:'game',width:430,height:420,pixelArt:true,backgroundColor:'#efdfc2',scale:{mode:Phaser.Scale.RESIZE,autoCenter:Phaser.Scale.CENTER_BOTH},scene:[scene],audio:{noAudio:true}});
 const escape=(text:string)=>text.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]!)).replaceAll(String.fromCharCode(34),'&quot;').replaceAll(String.fromCharCode(39),'&#39;');
-let entered=false,managerName=loadName(),dialog:'warehouse'|'notebook'|'stock'|'inventory'|'tasks'|'closing'|'conversation'|'hamster-help'|null=null,lastSignature='',saveNotice='';
-let paused=false;
+let entered=false,managerName=npcPreview&&typeof s.preservedSessionFields.previewManagerName==='string'?normalizeName(s.preservedSessionFields.previewManagerName):loadName(),dialog:'warehouse'|'notebook'|'stock'|'inventory'|'tasks'|'closing'|'conversation'|'hamster-help'|null=null,lastSignature='',saveNotice='';
+let paused=false;let entering=false;
+let dialogueTimer=0,dialogueKey='',dialogueLetters=0,dialogueRevealed=false;
 let resetJoystick: () => void = () => {};
 function resetMovement(){scene.resetInput();resetJoystick();}
 function dismissDialog(){dialog=null;scene.modal=false;resetMovement();}
@@ -52,24 +56,27 @@ function render(){
   if(panel.querySelector('#enter-shop'))return;
   panel.innerHTML=`<div class="eyebrow">PUPPY MART · ${npcPreview?'仓鼠独立预览':'P1'}</div><h1>今天，走进小店</h1><label class="name-label" for="manager-name">给吉娃娃店长取个名字</label><input id="manager-name" maxlength="32" value="${escape(managerName)}" placeholder="你想怎样称呼店长？"><p class="muted">沿用本机名字；不修改已有经营存档。</p><button id="enter-shop" class="primary wide" data-do="enter">进入便利店 →</button><p>首次进入会逐步引导实际移动、补货和收银；可随时跳过或重新学习。</p><a href="?mode=classic">回到经典 P0 模式</a>`;return;
  }
+ if(s.narrative.data.active&&!s.narrative.current)s.narrative.skip();
+ if(dialog==='conversation'&&!s.narrative.data.active)dismissDialog();
  if(s.narrative.data.active)dialog='conversation';
  if(tutorial.observe(s))saveProgress();
  scene.guideTarget=tutorial.target(s);scene.highlightPlayer=tutorial.active&&tutorial.step===0;
  scene.modal=!!dialog||layout.open||s.closed;
  document.body.classList.toggle('sim-dialog-open',!!dialog||layout.open);
- const signature=JSON.stringify([s.nearby,s.warehouse,s.shelves,s.carrying,s.customerState,s.path.length===0,s.futureArrivals,s.insideCount,s.departedCount,s.basket,s.scanned,s.confirmed,s.cashReceived,s.change,s.coins,s.served,s.open,s.closed,Math.ceil(s.remaining),s.message,dialog,paused,tutorial.record,notebookPage,selectedGoods,s.business.data,s.narrative.data,s.feedbackRevision,sound.enabled,layout.open]);
+ const signature=JSON.stringify([s.nearby,s.canTalkHamster,s.warehouse,s.shelves,s.carrying,s.customerState,s.path.length===0,s.futureArrivals,s.insideCount,s.departedCount,s.basket,s.scanned,s.confirmed,s.cashReceived,s.change,s.coins,s.served,s.open,s.closed,Math.ceil(s.remaining),s.message,dialog,paused,tutorial.record,notebookPage,selectedGoods,s.business.data,s.narrative.data,s.feedbackRevision,sound.enabled,layout.open]);
  if(s.feedbackRevision!==lastFeedback){lastFeedback=s.feedbackRevision;const toast=document.querySelector<HTMLElement>('#feedback-toast');clearTimeout(toastTimer);toast?.classList.remove('show');if(s.feedbackRevision>0){if(toast){toast.textContent=s.feedback;void toast.offsetWidth;toast.classList.add('show');toastTimer=window.setTimeout(()=>toast.classList.remove('show'),2800);}sound.play(s.feedback.startsWith('扫描')?'scan':'sale');if(s.feedback.includes('目标完成')||s.feedback.includes('升级'))microCelebrate();}}
  if(signature===lastSignature)return;lastSignature=signature;
  const action=contextAction();
- panel.innerHTML=`<div class="compact-hud"><span>第${s.business.data.day}天</span><b>◈ ${s.business.data.balance}</b><span class="clock">${s.open?Math.floor(s.flow.elapsed/60)+':'+String(Math.floor(s.flow.elapsed%60)).padStart(2,'0'):'准备'}</span><div class="business-strip"><span class="flow-counts" aria-label="每日客流">待到 ${s.futureArrivals} · 店内 ${s.insideCount} · 离店 ${s.departedCount}</span>${!s.closed?`<button class="business-toggle" data-do="business" ${paused||!!dialog||layout.open||(!s.open&&tutorial.active&&tutorial.step<4)||(s.open&&!s.canClose)?'disabled':''} title="${s.open&&!s.canClose?'等待计划顾客全部到店并离开':!s.open&&tutorial.active&&tutorial.step<4?'先完成教学补货':s.open?'查看打烊结算':'开始自动营业'}">${s.open?'打烊':'开店'}</button>`:''}</div><nav><button data-do="tasks" aria-label="任务">✓</button><button data-do="inventory" aria-label="库存">▦</button><button data-do="notebook" aria-label="员工须知">▤</button><button data-do="settings" id="layout-settings" aria-label="设置">⚙</button></nav></div>${tutorial.active&&!s.closed?`<aside class="guide-chip" aria-label="新手引导"><span>${String(tutorial.step+1).padStart(2,'0')} · ${escape(tutorial.text?.short??tutorial.text?.title??'')}</span><button data-do="skip-tutorial">跳过</button></aside>`:''}${paused?'<div class="pause-chip"><button data-do="pause">继续经营</button></div>':''}${saveNotice?`<p class="save-warning">${escape(saveNotice)}</p>`:''}${action&&!dialog&&!paused&&!layout.open&&!s.closed?`<button class="interact-pad" data-do="interact" aria-label="${action}">${action}<small>E</small></button>`:''}<div id="dialog" ${dialog||s.closed?'role="dialog" aria-modal="true" aria-label="店铺互动"':''}>${s.closed?`<section class="sim-dialog summary-sheet"><div class="dialog-heading"><h2>营业结算</h2><button class="primary" data-do="next-day">${tutorial.active?'完成教程':'开始下一天'}</button></div>${growthSummary(s)}</section>`:dialogContent()}</div>`;
+ panel.innerHTML=`<div class="compact-hud"><span>第${s.business.data.day}天</span><b>◈ ${s.business.data.balance}</b><span class="clock">${s.open?Math.floor(s.flow.elapsed/60)+':'+String(Math.floor(s.flow.elapsed%60)).padStart(2,'0'):'准备'}</span><div class="business-strip"><span class="flow-counts" aria-label="每日客流">待到 ${s.futureArrivals} · 店内 ${s.insideCount} · 离店 ${s.departedCount}</span>${!s.closed?`<button class="business-toggle" data-do="business" ${paused||!!dialog||layout.open||(!s.open&&tutorial.active&&tutorial.step<4)||(s.open&&!s.canClose)?'disabled':''} title="${s.open&&!s.canClose?'等待计划顾客全部到店并离开':!s.open&&tutorial.active&&tutorial.step<4?'先完成教学补货':s.open?'查看打烊结算':'开始自动营业'}">${s.open?'打烊':'开店'}</button>`:''}</div><nav><button data-do="tasks" aria-label="任务">✓</button><button data-do="inventory" aria-label="库存">▦</button><button data-do="notebook" aria-label="员工须知">▤</button><button data-do="settings" id="layout-settings" aria-label="设置">⚙</button></nav></div>${tutorial.active&&!s.closed?`<aside class="guide-chip" aria-label="新手引导"><span>${String(tutorial.step+1).padStart(2,'0')} · ${escape(tutorial.text?.short??tutorial.text?.title??'')}</span><button data-do="skip-tutorial">跳过</button></aside>`:''}${paused?'<div class="pause-chip"><button data-do="pause">继续经营</button></div>':''}${saveNotice?`<p class="save-warning">${escape(saveNotice)}</p>`:''}${action&&!dialog&&!paused&&!layout.open&&!s.closed?`<button class="interact-pad ${action.length>2?'long-label':''}" data-do="interact" aria-label="${action}">${action}<small>E</small></button>`:''}${s.canTalkHamster&&!dialog&&!paused&&!layout.open&&!s.closed?'<button class="npc-chat-pad" data-do="npc-talk">交谈</button>':''}<div id="dialog" ${dialog||s.closed?'role="dialog" aria-modal="true" aria-label="店铺互动"':''}>${s.closed?`<section class="sim-dialog summary-sheet"><div class="dialog-heading"><h2>营业结算</h2><button class="primary" data-do="next-day">${tutorial.active?'完成教程':'开始下一天'}</button></div>${growthSummary(s)}</section>`:dialogContent()}</div>`;
+ updateDialogueText();
 }
 function contextAction(){switch(s.nearby){case 'customer001':return '帮忙拿取';case 'notebook':return '阅读';case 'warehouse':return '拿货';case 'milk':return '补货';case 'bread':return s.canAdjustHamsterShelf&&s.carrying?.goods!=='bread'?'调整摆放位置':'补货';case 'freezer':return s.business.level>=2?'补货':null;case 'counter':return s.atRegister?'结账':null;case 'entrance':return null;default:return null;}}
 function heading(title:string){return `<div class="dialog-heading"><h2>${title}</h2><button data-do="dismiss">返回店铺</button></div>`;}
 function dialogContent(){
- if(dialog==='hamster-help')return `<section class="sim-dialog">${heading('小仓鼠 · 高层货位')}<p>它够不到上层商品。可以现在帮忙，也可以稍后再来。</p><button class="primary wide" data-do="help-hamster">帮忙拿取商品</button><button data-do="dismiss">稍后再来</button></section>`;
+ if(dialog==='hamster-help')return `<section class="sim-dialog">${heading('小仓鼠 · 高层货位')}<p>它够不到上层商品。可以现在帮忙，也可以稍后再来。</p><button class="primary wide" data-do="help-hamster">帮忙拿取商品</button><button data-do="dismiss">稍后再来</button>${s.canHearShelfDraft?'<button data-do="shelf-dialogue">听它说（草稿试读）</button>':''}</section>`;
  if(dialog==='conversation'){
   const node=s.narrative.current;if(!node)return '';
-  return `<section class="sim-dialog conversation" aria-label="顾客对话"><div class="dialog-heading"><h2>${escape(node.displayName)}</h2><button data-do="dialogue-skip">跳过对话</button></div><img class="portrait" src="${node.expression==='soft'?portraitSoft:portraitNeutral}" alt="测试熟客像素肖像"><div class="dialogue-body"><small>${escape(narrativeContent.notice)}</small><p>${escape(node.text)}</p><div class="dialogue-choices">${node.choices.length?node.choices.map((choice,index)=>`<button data-do="dialogue-choice-${index}">${escape(choice.label)}</button>`).join(''):'<button class="primary" data-do="dialogue-continue">继续</button>'}</div></div></section>`;
+  return `<section class="sim-dialog conversation" aria-label="顾客对话"><div class="dialog-heading"><h2>${escape(node.displayName)}</h2><button data-do="dialogue-skip">跳过对话</button></div><img class="portrait" src="${node.portraitId==='customer001'?hamsterPortrait:node.expression==='soft'?portraitSoft:portraitNeutral}" alt="${node.portraitId==='customer001'?'小仓鼠像素肖像':'测试熟客像素肖像'}"><div class="dialogue-body"><small>${escape(node.portraitId==='customer001'?(node.npcStatus==='draft'?'草稿试读 · 待作者审核':''):narrativeContent.notice)}</small><button class="dialogue-line" data-do="dialogue-advance" aria-label="${escape(node.text)}"></button><div class="dialogue-choices">${node.choices.length?node.choices.map((choice,index)=>`<button data-do="dialogue-choice-${index}">${escape(choice.label)}</button>`).join(''):'<button class="primary" data-do="dialogue-continue">显示全文</button>'}</div></div></section>`;
  }
 
  if(dialog==='notebook'){
@@ -105,18 +112,19 @@ function interact(){
 scene.onRefresh=render;scene.onInteract=interact;
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&dialog&&!layout.open){e.preventDefault();if(dialog==='conversation')s.narrative.skip();dismissDialog();saveProgress();render();}});
 panel.addEventListener('pointerdown',e=>{if((e.target as HTMLElement).closest('[data-do="interact"]')){e.preventDefault();interact();}});
-panel.addEventListener('click',e=>{
+panel.addEventListener('click',async e=>{
  const action=(e.target as HTMLElement).closest<HTMLButtonElement>('button')?.dataset.do;if(!action)return;if(action==='interact'&&e.detail>0)return;
  resetMovement();
  if(action==='enter'){
+  if(entered||entering)return;entering=true;await npcDraftsReady;entering=false;
   const input=panel.querySelector<HTMLInputElement>('#manager-name')!;managerName=normalizeName(input.value);
   if(!layout.preferences.selected){layout.show('choice');return;}
   if(!managerName){input.setCustomValidity('请先给店长取名。');input.reportValidity();return;}
-  saveNotice=storedSession.warning||tutorial.warning||((npcPreview||saveName(managerName))?'':'名字暂时无法保存；当前仍可游玩。');entered=true;document.querySelector('#app')!.classList.add('playing');document.body.classList.add('immersive');scene.activePlay=true;setupJoystick();
+  saveNotice=npcDraftWarning||storedSession.warning||tutorial.warning||((npcPreview||saveName(managerName))?'':'名字暂时无法保存；当前仍可游玩。');if(npcPreview)s.preservedSessionFields.previewManagerName=managerName;entered=true;document.querySelector('#app')!.classList.add('playing');document.body.classList.add('immersive');scene.activePlay=true;setupJoystick();
  }else if(action==='restart'){nextDay();return;}
  else if(action==='pause'){paused=!paused;scene.paused=paused;}
  else if(action==='dialogue-skip'){s.narrative.skip();dismissDialog();}
- else if(action==='dialogue-continue'){s.narrative.continue();if(!s.narrative.data.active)dismissDialog();}
+ else if(action==='dialogue-continue'||action==='dialogue-advance'){if(!dialogueRevealed){dialogueRevealed=true;updateDialogueText();}else{s.narrative.continue();if(!s.narrative.data.active)dismissDialog();}}
  else if(action.startsWith('dialogue-choice-'))s.narrative.choose(Number(action.slice(16)));
  else if(action==='dismiss')dismissDialog();
  else if(action==='skip-tutorial'){tutorial.skip();s.message='已跳过教程。随时打开员工须知，或选择重新学习。';}
@@ -124,6 +132,7 @@ panel.addEventListener('click',e=>{
  else if(action==='settings'){layout.show();}
  else if(action==='tasks'||action==='inventory'){dialog=action;}
  else if(action.startsWith('select-'))selectedGoods=action.slice(7) as Goods;
+ else if(action==='npc-talk'||action==='shelf-dialogue'){const v=s.hamster;if(v&&Math.hypot(s.player.x-v.position.x,s.player.y-v.position.y)<=56&&s.narrative.beginNpcDialogue(CUSTOMER_001,v.id,s.business.data.day,action==='shelf-dialogue'?'shelf':'chat'))dialog='conversation';}
  else if(action==='help-hamster'){s.helpHamster();dismissDialog();}
  else if(action==='adjust-shelf'){if(s.adjustHamsterShelf())dismissDialog();}
  else if(action==='restock'){if(s.restock(selectedGoods)){tutorial.observe(s,'restock');dismissDialog();}}
@@ -141,6 +150,7 @@ panel.addEventListener('click',e=>{
  else if(action==='close-day'){if(s.canClose){s.closeDay();dismissDialog();}}
  saveProgress();render();
 });
+function updateDialogueText(){clearInterval(dialogueTimer);if(dialog!=='conversation'){dialogueKey='';return;}const node=s.narrative.current,button=panel.querySelector<HTMLButtonElement>('.dialogue-line');if(!node||!button)return;const key=JSON.stringify([s.narrative.data.active,node.text]);if(key!==dialogueKey){dialogueKey=key;dialogueLetters=0;dialogueRevealed=reducedMotion;}const letters=Array.from(node.text);const paint=()=>{button.textContent=dialogueRevealed?node.text:letters.slice(0,dialogueLetters).join('');const next=panel.querySelector<HTMLButtonElement>('[data-do="dialogue-continue"]');if(next)next.textContent=dialogueRevealed?'继续':'显示全文';};paint();if(!dialogueRevealed)dialogueTimer=window.setInterval(()=>{dialogueLetters+=1;if(dialogueLetters>=letters.length){dialogueRevealed=true;clearInterval(dialogueTimer);}paint();},28);}
 function microCelebrate(){if(reducedMotion)return;const burst=document.createElement('div');burst.className='micro-confetti';burst.innerHTML=Array.from({length:6},(_,i)=>`<i style="--dx:${Math.cos(i*Math.PI/3)*48}px;--dy:${Math.sin(i*Math.PI/3)*30}px"></i>`).join('');document.body.append(burst);setTimeout(()=>burst.remove(),700);}
 function celebrate(){const confetti=document.createElement('div');confetti.className='pixel-confetti';confetti.setAttribute('role','status');confetti.innerHTML='<b>教程完成</b>'+ Array.from({length:navigator.hardwareConcurrency<=4?12:24},(_,i)=>`<i style="--i:${i};--dx:${Math.cos(i*Math.PI/12)*(90+(i%4)*25)}px;--dy:${Math.sin(i*Math.PI/12)*(90+(i%4)*25)}px;background:${['#ae744e','#648e7b','#e0bc71'][i%3]}"></i>`).join('');document.body.append(confetti);setTimeout(()=>confetti.remove(),1500);}
 function setupJoystick(){

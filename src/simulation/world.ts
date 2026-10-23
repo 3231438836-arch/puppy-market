@@ -1,3 +1,4 @@
+import {eligibleNpcDialogues} from './npc-dialogues';
 import {CUSTOMER_001,customer001Config,hamsterProfile,hamsterWeight,shelfAdjusted} from './npc001';
 import {Narrative} from './narrative';
 import {arrivalPlan,freshFlow,type Visitor} from './customer-flow';
@@ -95,6 +96,8 @@ export class ShopSimulation {
   get tender() { return Math.max(20,Math.ceil(this.total/10)*10); }
   get changeDue() { return this.tender - this.total; }
   get hamster(){return this.flow.visitors.find(v=>v.customerId===CUSTOMER_001&&v.state!=='gone'&&v.state!=='leaving');}
+  get canTalkHamster(){const v=this.hamster;return !!v&&v.shelfHelp!=='waiting'&&Math.hypot(this.player.x-v.position.x,this.player.y-v.position.y)<=56&&eligibleNpcDialogues(this.narrative.data,CUSTOMER_001,this.business.data.day,'chat',this.narrative.allowDrafts).length>0;}
+  get canHearShelfDraft(){return eligibleNpcDialogues(this.narrative.data,CUSTOMER_001,this.business.data.day,'shelf',this.narrative.allowDrafts).length>0;}
   get nearby():FixtureId|null {
     const hamster=this.hamster;if(hamster?.shelfHelp==='waiting'&&Math.hypot(this.player.x-hamster.position.x,this.player.y-hamster.position.y)<=customer001Config.shelf.helpRange)return 'customer001';
     this.lastInteraction=selectInteraction(this.player,this.facing,[...fixtures.map(f=>({id:f.id,...f.spot,range:45})),{id:'notebook',...NOTEBOOK_SPOT,range:30},{id:'entrance',...ENTRANCE_SPOT,range:42}],this.lastInteraction);
@@ -182,7 +185,7 @@ export class ShopSimulation {
       const goods=v.shoppingList[v.shoppingIndex];
       if(v.customerId===CUSTOMER_001){
         if(!v.inspected){v.inspectSeconds=(v.inspectSeconds??0)+seconds;if(v.inspectSeconds<customer001Config.shopping.inspectSeconds)continue;v.inspected=true;}
-        if(goods===customer001Config.shelf.goods&&!shelfAdjusted(this.narrative.data)&&v.shelfHelp!=='helped'){
+        if(goods===customer001Config.shelf.goods&&this.shelves[goods]>0&&!shelfAdjusted(this.narrative.data)&&v.shelfHelp!=='helped'){
           const p=hamsterProfile(this.narrative.data);
           if(!p.eventFlags[customer001Config.flags.firstShelfSeen]||v.shelfHelp==='waiting'){
             p.eventFlags[customer001Config.flags.firstShelfSeen]=true;v.shelfHelp='waiting';v.shelfWaitSeconds=(v.shelfWaitSeconds??0)+seconds;
@@ -206,10 +209,11 @@ export class ShopSimulation {
   checkout(){
     const v=this.front;if(this.narrative.data.active||!this.atRegister||!v||v.paid)return false;
     const total=v.basket.reduce((n,id)=>n+products.find(p=>p.id===id)!.price,0);
-    v.paid=true;this.flow.queue.shift();const before=this.business.level;const tasks=this.business.sale(v.basket);
+    v.paid=true;if(v.customerId===CUSTOMER_001)hamsterProfile(this.narrative.data).eventFlags[customer001Config.flags.met]=true;this.flow.queue.shift();const before=this.business.level;const tasks=this.business.sale(v.basket);
     this.coins+=total;this.served++;v.state='leaving';v.exitStage='lane';v.path=[];
     this.scanned=0;this.confirmed=false;this.cashReceived=false;this.change=0;
     this.announce('结账 +'+total+' · '+(this.business.level>before?'升级！解锁 '+(this.business.level===2?'冰柜饭团货位':'柜台小花盆'):tasks.length?'目标完成：'+tasks.join('、'):'交易完成'));
+    const bark=this.narrative.checkoutBark(v.customerId,this.business.data.day);if(bark)this.announce('结账 +'+total+' · 小仓鼠：'+bark);
     this.message=`交易完成 +${total} 金币，下一位自动前进。`;this.syncLegacy();return true;
   }
   scan() { if (!this.atRegister || this.confirmed || this.scanned >= this.basket.length) return false; this.scanned++;this.announce('扫描 +'+products.find(p=>p.id===this.basket[this.scanned-1])!.price+' 金币'); return true; }
@@ -226,7 +230,7 @@ export class ShopSimulation {
   }
   nextDay(){
     if(!this.closed)return null;
-    const next=new ShopSimulation();next.business=new Business(this.business.data);next.business.nextDay();next.warehouse={...this.warehouse};next.shelves={...this.shelves};next.carrying=this.carrying?{...this.carrying}:null;next.preservedSessionFields={...this.preservedSessionFields};next.narrative=new Narrative(this.narrative.data);next.npcPreview=this.npcPreview;return next;
+    const next=new ShopSimulation();next.business=new Business(this.business.data);next.business.nextDay();next.warehouse={...this.warehouse};next.shelves={...this.shelves};next.carrying=this.carrying?{...this.carrying}:null;next.preservedSessionFields={...this.preservedSessionFields};next.narrative=new Narrative(this.narrative.data,this.narrative.content,this.narrative.allowDrafts);next.npcPreview=this.npcPreview;return next;
   }
   closeDay() { if(!this.canClose)return false;this.closed=true;this.open=false;this.message='今日打烊，库存、资金与顾客记录已保留。';return true; }
 }

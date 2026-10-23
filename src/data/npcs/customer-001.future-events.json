@@ -1,0 +1,11 @@
+{
+ "eventId":"customer001_roommate_joint_shopping",
+ "npcId":"CUSTOMER_001",
+ "status":"candidate",
+ "enabled":false,
+ "requiresAuthorApproval":true,
+ "guestDefinition":null,
+ "conditions":null,
+ "dialogueRef":"roommate-shopping-candidate",
+ "authorNotes":"只保留共同采购接口。室友物种、姓名、身份、动机均未确定，不注册为002。"
+}
