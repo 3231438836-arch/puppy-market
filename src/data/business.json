@@ -13,6 +13,6 @@
  "goals":[
   {"id":"orders","title":"完成订单","target":1,"coins":3,"xp":4},
   {"id":"restocks","title":"补货两次","target":2,"coins":2,"xp":4},
-  {"id":"change","title":"正确找零一次","target":1,"coins":2,"xp":3}
+  {"id":"change","title":"完成一键收款","target":1,"coins":2,"xp":3}
  ]
 }

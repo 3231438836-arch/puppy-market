@@ -13,9 +13,11 @@ export class SimulationScene extends Phaser.Scene {
   onRefresh: () => void = () => {};
   onInteract: () => void = () => {};
   private playerSprite!: Phaser.GameObjects.Image;
-  private customerSprite!: Phaser.GameObjects.Image;
+  private customerSprites=new Map<string,Phaser.GameObjects.Image>();
   private heldBox!: Phaser.GameObjects.Image;
   private flower!: Phaser.GameObjects.Graphics;
+  private lastStockRevision=0;
+  private stockFlashUntil=0;
   private stockGraphics!: Phaser.GameObjects.Graphics;
   private stockLabels: Partial<Record<'milk' | 'bread' | 'rice', Phaser.GameObjects.Text>> = {};
   private cursors?: Phaser.Types.Input.Keyboard.CursorKeys;
@@ -56,13 +58,14 @@ export class SimulationScene extends Phaser.Scene {
       this.label(x+w/2,y+h+10,f.label);
       zones.lineStyle(1,0x7f9e8c,.7).strokeCircle(f.spot.x,f.spot.y,12);
     }
-    const book=this.add.graphics().setDepth(450);book.fillStyle(0x70523d).fillRect(258,420,18,14).fillStyle(0xe9d7ad).fillRect(260,421,14,10).fillStyle(0x9b7353).fillRect(267,421,1,10);
+    const book=this.add.graphics().setDepth(450);book.fillStyle(0x70523d).fillRect(226,398,18,14).fillStyle(0xe9d7ad).fillRect(228,399,14,10).fillStyle(0x9b7353).fillRect(235,399,1,10);
     this.label(240,386,'员工须知', '#70523d');
+    this.label(336,539,'店员侧','#476966');this.label(336,435,'顾客排队','#476966');
     this.flower=this.add.graphics().setDepth(450);this.flower.fillStyle(0x99734d).fillRect(325,423,10,8).fillStyle(0x6c986f).fillRect(329,411,2,13).fillStyle(0xd8a39d).fillRect(326,409,8,6);
     this.guide=this.add.graphics().setDepth(1500);
     this.stockLabels.rice=this.add.text(416,49,'饭团 0/6',{fontSize:'11px',color:'#493a32',backgroundColor:'#fff5df'}).setOrigin(.5).setDepth(1000);
     this.stockGraphics=this.add.graphics().setDepth(400);
-    this.customerSprite=this.add.image(this.shop.customer.x,this.shop.customer.y,'customer-down-0').setOrigin(.5,.85).setVisible(false);
+
     this.heldBox=this.add.image(0,0,'crate').setVisible(false);
     this.playerSprite=this.add.image(this.shop.player.x,this.shop.player.y,'dog-down-0').setOrigin(.5,.85);
     this.cameras.main.setBounds(0,0,WIDTH*TILE,HEIGHT*TILE).startFollow(this.playerSprite,true,.15,.15).setRoundPixels(true);
@@ -121,12 +124,13 @@ export class SimulationScene extends Phaser.Scene {
     const frame=x||y?1+Math.floor(time/150)%2:0;
     this.playerSprite.setPosition(s.player.x,s.player.y).setDepth(s.player.y).setTexture(`dog-${this.facing}-${frame}`);
     this.heldBox.setVisible(!!s.carrying).setPosition(s.player.x+11,s.player.y-5).setDepth(s.player.y+1).setTint(s.carrying?.goods==='milk'?0xecf0df:0xeac28e);
-    const cx=s.customer.x-this.customerSprite.x,cy=s.customer.y-this.customerSprite.y;
-    const direction=Math.abs(cx)>Math.abs(cy)?cx>0?'right':'left':cy>0?'down':'up';
-    this.customerSprite.setVisible(s.customerState!=='outside'&&s.customerState!=='gone').setPosition(s.customer.x,s.customer.y).setDepth(s.customer.y).setTexture(`customer-${cx||cy?direction:'down'}-${cx||cy?1+Math.floor(time/160)%2:0}`);
+    for(const [id,sprite] of this.customerSprites)if(!s.flow.visitors.some(v=>v.id===id&&v.state!=='gone')){sprite.destroy();this.customerSprites.delete(id);}
+    for(const v of s.flow.visitors){if(v.state==='gone')continue;let sprite=this.customerSprites.get(v.id);if(!sprite){sprite=this.add.image(v.position.x,v.position.y,'customer-down-0').setOrigin(.5,.85);this.customerSprites.set(v.id,sprite);}const dx=v.position.x-sprite.x,dy=v.position.y-sprite.y,direction=Math.abs(dx)>Math.abs(dy)?dx>0?'right':'left':dy>0?'down':'up';sprite.setPosition(v.position.x,v.position.y).setDepth(v.position.y).setTexture(`customer-${dx||dy?direction:'down'}-${dx||dy?1+Math.floor(time/160)%2:0}`).setTint(v.customerId==='test-regular'?0xd1c3ab:0xffffff);}
+    if(this.lastStockRevision!==s.stockRevision){this.lastStockRevision=s.stockRevision;this.stockFlashUntil=time+450;}
     this.stockGraphics.clear();
     for(const goods of ['milk','bread','rice'] as const){
       const f=fixtures.find(f=>f.id===(goods==='rice'?'freezer':goods))!;
+      if(time<this.stockFlashUntil&&!document.body.classList.contains('reduced-motion'))this.stockGraphics.lineStyle(2,0xffedb8,.8).strokeRect(f.x*TILE-2,f.y*TILE-2,f.w*TILE+4,f.h*TILE+4);
       for(let i=0;i<s.shelves[goods];i++){
         const x=f.x*TILE+10+(i%2)*27,y=f.y*TILE+7+Math.floor(i/2)*29;
         this.stockGraphics.fillStyle(goods==='milk'?0xe8efe4:goods==='rice'?0xf1edda:0xd7a66e).fillRect(x,y,16,20).fillStyle(goods==='milk'?0x729b9d:goods==='rice'?0x506c50:0x986f47).fillRect(x+3,y+8,10,5);

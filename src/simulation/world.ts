@@ -1,3 +1,4 @@
+import {arrivalPlan,freshFlow,type Visitor} from './customer-flow';
 import { selectInteraction } from './interaction';
 import { Business } from './business';
 import products from '../data/products.json' with { type: 'json' };
@@ -11,7 +12,7 @@ export const fixtures = [
   { id: 'bread', x: 10, y: 6, w: 2, h: 3, label: '面包货架', spot: center(10, 9) },
   { id: 'freezer', x: 12, y: 2, w: 2, h: 2, label: '冰柜', spot: center(12, 4) },
   { id: 'stairs', x: 9, y: 1, w: 2, h: 2, label: '员工宿舍 ↑', spot: center(9, 3) },
-  { id: 'counter', x: 8, y: 13, w: 3, h: 1, label: '收银台', spot: center(9, 12) },
+  { id: 'counter', x: 9, y: 15, w: 3, h: 1, label: '收银台', spot: center(10, 16) },
 ] as const;
 export type FixtureId = typeof fixtures[number]['id'] | 'notebook' | 'entrance';
 export const NOTEBOOK_SPOT=center(7,12);
@@ -32,7 +33,8 @@ export function move(p: Point, dx: number, dy: number): Point {
   return result;
 }
 /** Four-neighbour BFS. Waypoints are always in walkable aisle cells. */
-export function findPath(from: Point, to: Point): Point[] {
+export const QUEUE_SPOTS=[center(9,14),center(10,14),center(11,14)];
+export function findPath(from: Point, to: Point,occupied:Point[]=[]): Point[] {
   const start = { x: Math.floor(from.x / TILE), y: Math.floor(from.y / TILE) };
   const end = { x: Math.floor(to.x / TILE), y: Math.floor(to.y / TILE) };
   if (blocked(start.x, start.y) || blocked(end.x, end.y)) return [];
@@ -47,7 +49,7 @@ export function findPath(from: Point, to: Point): Point[] {
     }
     for (const [dx, dy] of [[0, 1], [1, 0], [0, -1], [-1, 0]]) {
       const next = { x: p.x + dx, y: p.y + dy };
-      if (!blocked(next.x, next.y) && !previous.has(key(next))) { previous.set(key(next), p); queue.push(next); }
+      if (!blocked(next.x, next.y) && !occupied.some(o=>Math.floor(o.x/TILE)===next.x&&Math.floor(o.y/TILE)===next.y) && !previous.has(key(next))) { previous.set(key(next), p); queue.push(next); }
     }
   }
   return [];
@@ -55,6 +57,8 @@ export function findPath(from: Point, to: Point): Point[] {
 export type CustomerState = 'outside' | 'shopping' | 'waiting-stock' | 'queueing' | 'leaving' | 'gone';
 export class ShopSimulation {
   business=new Business();
+  flow=freshFlow();
+  tutorialDay=false;
   preservedSessionFields:Record<string,unknown>={};
   feedback='';
   feedbackRevision=0;
@@ -98,9 +102,17 @@ export class ShopSimulation {
   }
   startDay() {
     if (this.open || this.closed) return;
-    this.open = true;this.spawnFromStock();
-    this.message = '已开店：顾客会自行购物。空架会让顾客等待，记得补齐牛奶和面包。';
+    this.open = true;
+    if(!this.flow.plan.length)this.flow.plan=arrivalPlan(this.business.data.day,this.tutorialDay?1:4);
+    this.tick(.001);this.message='已开店：顾客会按计划自动到店；补货后到店员侧一键结账。';
   }
+  get futureArrivals(){return this.flow.plan.filter(a=>!a.arrived).length;}
+  get insideCount(){return this.flow.visitors.filter(v=>v.state!=='gone').length;}
+  get departedCount(){return this.flow.visitors.filter(v=>v.state==='gone').length;}
+  get canClose(){return this.open&&this.flow.plan.length>0&&this.futureArrivals===0&&this.insideCount===0;}
+  get front(){return this.flow.visitors.find(v=>v.id===this.flow.queue[0]);}
+  private syncLegacy(){const v=this.front??this.flow.visitors.find(v=>v.state!=='gone')??this.flow.visitors.at(-1);if(!v)return;this.customer={...v.position};this.customerState=v.state;this.path=v.path;this.basket=v.basket;this.shoppingList=v.shoppingList;this.shoppingIndex=v.shoppingIndex;}
+
   takeBox(goods: Goods) {
     if (this.closed || this.nearby !== 'warehouse') return false;
     if (this.carrying) { this.message = '一次只能拿一箱，先补货或把货箱放回仓库。'; return false; }
@@ -123,62 +135,68 @@ export class ShopSimulation {
     this.stockRevision++;const previousLevel=this.business.level;const tasks=this.business.restock();this.announce(this.business.level>previousLevel?'升级！解锁 '+(this.business.level===2?'冰柜饭团货位':'柜台小花盆'):tasks.length?'目标完成：'+tasks.join('、'):'补货完成 +'+amount);
     this.message = `补货完成 +${amount}，库存 ${this.shelves[goods]}/${this.capacity}。`; return true;
   }
-  private spawnFromStock(){
-    let available=this.shoppingList.filter(id=>this.business.unlocked.includes(id)&&this.shelves[id]>0);
-    if(!available.length)available=this.business.unlocked.filter(id=>this.shelves[id]>0);
-    if(!available.length)return false;
-    this.shoppingList=available;this.customerState='shopping';this.routeToShelf();return true;
+  private target(v:Visitor):Point{
+    if(v.state==='leaving')return ENTRANCE_SPOT;
+    if(v.state==='queueing')return QUEUE_SPOTS[Math.min(2,this.flow.queue.indexOf(v.id))];
+    return fixtures.find(f=>f.id===(v.shoppingList[v.shoppingIndex]==='rice'?'freezer':v.shoppingList[v.shoppingIndex]))!.spot;
   }
-  private routeToShelf() {
-    const goods = this.shoppingList[this.shoppingIndex];
-    this.path = findPath(this.customer, fixtures.find(f => f.id === (goods==='rice'?'freezer':goods))!.spot);
-  }
-  tick(seconds: number) {
-    if (!this.open || this.closed || seconds <= 0) return;
-    this.remaining = Math.max(0, this.remaining - seconds);
-    if (!this.remaining) { this.closeDay(); return; }
-    if(this.customerState==='outside'){this.spawnFromStock();if(this.customerState==='outside')return;}
-    let distance = seconds * 62;
-    while (this.path.length && distance > 0) {
-      const target = this.path[0], length = Math.hypot(target.x - this.customer.x, target.y - this.customer.y);
-      if (length <= distance) { this.customer = { ...target }; this.path.shift(); distance -= length; }
-      else { this.customer.x += (target.x - this.customer.x) / length * distance; this.customer.y += (target.y - this.customer.y) / length * distance; distance = 0; }
+  tick(seconds:number){
+    if(!this.open||this.closed||seconds<=0)return;
+    this.flow.elapsed+=seconds;this.remaining=Math.max(0,this.remaining-seconds);
+    const active=this.flow.visitors.filter(v=>v.state!=='gone');
+    const pending=this.flow.plan.find(a=>!a.arrived&&a.at<=this.flow.elapsed);
+    if(pending&&active.length<3&&!active.some(v=>Math.hypot(v.position.x-ENTRANCE_SPOT.x,v.position.y-ENTRANCE_SPOT.y)<30)){
+      pending.arrived=true;const available=this.business.unlocked.filter(id=>this.shelves[id]>0);
+      this.flow.visitors.push({id:pending.id,customerId:pending.id.endsWith('1')?'test-regular':'ordinary',position:{...ENTRANCE_SPOT},state:'shopping',path:[],shoppingList:available.length?available.slice(0,2):['milk'],shoppingIndex:0,basket:[],queueOrder:null,paid:false,waitSeconds:0});
     }
-    if (this.path.length) return;
-    if (this.customerState === 'shopping' || this.customerState === 'waiting-stock') {
-      const goods = this.shoppingList[this.shoppingIndex];
-      if (!this.shelves[goods]) { this.customerState = 'waiting-stock'; return; }
-      this.shelves[goods]--; this.basket.push(goods); this.shoppingIndex++;
-      if (this.shoppingIndex < this.shoppingList.length) { this.customerState = 'shopping'; this.routeToShelf(); }
-      else { this.customerState = 'queueing'; this.path = findPath(this.customer, center(9, 14)); }
-    } else if (this.customerState === 'leaving') { this.customerState = 'gone'; this.message = '顾客已离店，完整经营体验完成！可以继续练习补货或打烊。'; }
+    // Front of queue and departing customers move first; occupancy prevents overlap.
+    const ordered=[...this.flow.visitors].sort((a,b)=>(a.state==='leaving'?-10:a.queueOrder??100)-(b.state==='leaving'?-10:b.queueOrder??100));
+    for(const v of ordered){
+      if(v.state==='gone')continue;
+      const target=this.target(v),others=this.flow.visitors.filter(o=>o.id!==v.id&&o.state!=='gone');
+      if(Math.hypot(v.position.x-target.x,v.position.y-target.y)>1){
+        if(!v.path.length||Math.hypot(v.path.at(-1)!.x-target.x,v.path.at(-1)!.y-target.y)>1)v.path=findPath(v.position,target,others.map(o=>o.position));
+        if(!v.path.length&&Math.floor(v.position.x/TILE)===Math.floor(target.x/TILE)&&Math.floor(v.position.y/TILE)===Math.floor(target.y/TILE))v.path=[target];
+        if(v.path.length){const next=v.path[0],distance=Math.hypot(next.x-v.position.x,next.y-v.position.y),amount=Math.min(distance,seconds*62),p={x:v.position.x+(next.x-v.position.x)/(distance||1)*amount,y:v.position.y+(next.y-v.position.y)/(distance||1)*amount};
+          if(!others.some(o=>Math.hypot(o.position.x-p.x,o.position.y-p.y)<24)){v.position=p;if(distance<=amount)v.path.shift();}
+          else v.path=findPath(v.position,target,others.map(o=>o.position));
+        }continue;
+      }
+      v.path=[];
+      if(v.state==='leaving'){v.state='gone';this.message=this.canClose?'今日客流已全部离店，可以到入口打烊。':'顾客已离店，下一位会自动到来。';continue;}
+      if(v.state==='queueing'){v.waitSeconds+=seconds;continue;}
+      const goods=v.shoppingList[v.shoppingIndex];
+      if(!this.shelves[goods]){v.state='waiting-stock';v.waitSeconds+=seconds;continue;}
+      this.shelves[goods]--;v.basket.push(goods);v.shoppingIndex++;
+      if(v.shoppingIndex>=v.shoppingList.length){v.state='queueing';v.queueOrder=this.flow.nextQueueOrder++;this.flow.queue.push(v.id);}else v.state='shopping';
+    }
+    this.syncLegacy();
   }
-  get atRegister() { return !this.closed && this.nearby === 'counter' && this.customerState === 'queueing' && !this.path.length; }
+  get atRegister(){const v=this.front;return !this.closed&&this.nearby==='counter'&&!!v&&!v.paid&&Math.hypot(v.position.x-QUEUE_SPOTS[0].x,v.position.y-QUEUE_SPOTS[0].y)<2;}
+  checkout(){
+    const v=this.front;if(!this.atRegister||!v||v.paid)return false;
+    const total=v.basket.reduce((n,id)=>n+products.find(p=>p.id===id)!.price,0);
+    v.paid=true;this.flow.queue.shift();const before=this.business.level;const tasks=this.business.sale(v.basket);
+    this.coins+=total;this.served++;v.state='leaving';v.path=[];
+    this.scanned=0;this.confirmed=false;this.cashReceived=false;this.change=0;
+    this.announce('结账 +'+total+' · '+(this.business.level>before?'升级！解锁 '+(this.business.level===2?'冰柜饭团货位':'柜台小花盆'):tasks.length?'目标完成：'+tasks.join('、'):'交易完成'));
+    this.message=`交易完成 +${total} 金币，下一位自动前进。`;this.syncLegacy();return true;
+  }
   scan() { if (!this.atRegister || this.confirmed || this.scanned >= this.basket.length) return false; this.scanned++;this.announce('扫描 +'+products.find(p=>p.id===this.basket[this.scanned-1])!.price+' 金币'); return true; }
   confirmTotal() { if (!this.atRegister || !this.basket.length || this.scanned !== this.basket.length) return false; this.confirmed = true; return true; }
   receiveCash() { if (!this.atRegister || !this.confirmed) return false; this.cashReceived = true; return true; }
   addChange(amount: number) { if (this.atRegister && this.cashReceived && [1, 2, 5].includes(amount) && this.change + amount <= 50) this.change += amount; }
   clearChange() { if (this.atRegister) this.change = 0; }
-  finishSale() {
-    if (!this.atRegister || !this.cashReceived || this.change !== this.changeDue) { this.message = '请逐件扫描、确认总价并找回正确零钱。'; return false; }
-    const beforeLevel=this.business.level;const tasks=this.business.sale(this.basket);this.announce(this.business.level>beforeLevel?'升级！解锁 '+(this.business.level===2?'冰柜饭团货位':'柜台小花盆'):tasks.length?'目标完成：'+tasks.join('、'):'结账成功 +'+this.total);
-    this.coins += this.total; this.served++; this.customerState = 'leaving'; this.path = findPath(this.customer, center(7, 18));
-    this.message = `交易完成 +${this.total} 金币，顾客正在离店。`; return true;
-  }
+  /** Legacy transaction fields remain readable; current gameplay uses checkout(). */
+  finishSale(){if(!this.cashReceived||this.change!==this.changeDue)return false;return this.checkout();}
   purchaseBox(goods:Goods){
     if(this.closed||this.nearby!=='warehouse')return false;
     if(!this.business.purchase(goods)){this.message='资金不足或商品未解锁，采购未扣款。';return false;}
     this.warehouse[goods]+=3;this.message=`采购${products.find(p=>p.id===goods)!.name}一箱，支出 ${this.business.cost(goods)*3} 金币。`;return true;
   }
-  nextCustomer(){
-    if(!this.open||this.closed||this.customerState!=='gone')return false;
-    const available=this.business.unlocked.filter(id=>this.shelves[id]>0);
-    if(!available.length){this.message='已解锁货架都缺货，请先补货再接待。';return false;}
-    this.shoppingList=available.slice(0,3);this.shoppingIndex=0;this.basket=[];this.scanned=0;this.confirmed=false;this.cashReceived=false;this.change=0;this.customer=center(7,18);this.customerState='shopping';this.routeToShelf();return true;
-  }
   nextDay(){
     if(!this.closed)return null;
     const next=new ShopSimulation();next.business=new Business(this.business.data);next.business.nextDay();next.warehouse={...this.warehouse};next.shelves={...this.shelves};next.carrying=this.carrying?{...this.carrying}:null;next.preservedSessionFields={...this.preservedSessionFields};return next;
   }
-  closeDay() { this.closed = true; this.open = false; this.message = '今日打烊，库存与货箱保留在本次体验中；没有改动任何已有存档。'; }
+  closeDay() { if(!this.canClose)return false;this.closed=true;this.open=false;this.message='今日打烊，库存、资金与顾客记录已保留。';return true; }
 }

@@ -17,7 +17,7 @@ export class Tutorial {
    case 1:advance=event==='notebook'&&shop.nearby==='notebook';break;
    case 2:advance=event==='take'&&shop.carrying?.goods==='milk';break;
    case 3:advance=event==='restock'&&shop.shelves.milk>0;break;
-   case 4:advance=shop.customerState==='queueing'&&!shop.path.length;break;
+   case 4:advance=!!shop.front&&shop.front.state==='queueing';break;
    case 5:advance=shop.served>0;break;
    case 6:advance=shop.closed;break;
    case 7:advance=event==='review'&&shop.closed;break;
@@ -30,7 +30,8 @@ export class Tutorial {
   if(!this.active)return null;
   if(this.step===0)return center(7,16);
   if(this.step===1)return center(7,12);
-  if(this.step===4||this.step===6)return ENTRANCE_SPOT;
+  if(this.step===4)return shop.open?fixtures.find(f=>f.id==='counter')!.spot:ENTRANCE_SPOT;
+  if(this.step===6)return ENTRANCE_SPOT;
   const id=this.step===2?'warehouse':this.step===3?'milk':this.step===4?'counter':this.step===5?'counter':null;
   return id?fixtures.find(f=>f.id===id)!.spot:shop.player;
  }

@@ -27,3 +27,8 @@ body.immersive{position:fixed;inset:0;overflow:hidden;overscroll-behavior:none;m
 @media(orientation:landscape){.compact-hud{right:auto;max-width:calc(100% - 24px);min-width:420px}.guide-chip{top:64px;max-width:350px;right:auto}.register-items{grid-column:1}.register-payment{grid-column:2;grid-row:2/5}.sim-dialog[aria-label="收银操作"]{display:grid!important;grid-template-columns:1fr 1fr;gap:10px}.sim-dialog[aria-label="收银操作"] .dialog-heading{grid-column:1/-1}.sim-dialog[aria-label="收银操作"]>p:last-child{grid-column:1/-1;margin:0;font-size:12px}}
 @media(prefers-reduced-motion:reduce){.pixel-confetti{display:none}}
 @media(max-width:359px){.compact-hud{font-size:11px;gap:3px}.compact-hud>span:nth-of-type(2){max-width:48px;line-height:1.2}.compact-hud nav{flex-shrink:0}.compact-hud button{font-size:18px}.guide-chip{font-size:12px}}
+.compact-hud{flex-wrap:wrap;max-width:620px}.compact-hud .flow-counts{font-size:12px;white-space:nowrap}.compact-hud nav{margin-left:auto}.compact-hud .clock{font-variant-numeric:tabular-nums}.guide-chip{top:94px}
+.pixel-confetti i{left:50%;top:45%;animation:pixel-burst 1.3s ease-out forwards;animation-delay:0s}.pixel-confetti b{position:absolute;top:40%;left:50%;transform:translateX(-50%);background:#fff0c9;color:#624d36;padding:10px 20px;font-size:18px;border:2px solid #92734b;animation:burst-label 1.4s forwards}
+@keyframes pixel-burst{from{transform:translate(0,0);opacity:1}to{transform:translate(var(--dx),var(--dy));opacity:0}}@keyframes burst-label{0%,70%{opacity:1}100%{opacity:0}}
+@media(max-width:500px){.compact-hud{gap:3px}.compact-hud .flow-counts{order:5;flex-basis:100%;text-align:center}.guide-chip{top:91px}}
+body.reduced-motion .pixel-confetti i{display:none}body.reduced-motion .pixel-confetti b{animation:none}
