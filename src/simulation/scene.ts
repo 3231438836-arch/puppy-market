@@ -15,8 +15,9 @@ export class SimulationScene extends Phaser.Scene {
   private playerSprite!: Phaser.GameObjects.Image;
   private customerSprite!: Phaser.GameObjects.Image;
   private heldBox!: Phaser.GameObjects.Image;
+  private flower!: Phaser.GameObjects.Graphics;
   private stockGraphics!: Phaser.GameObjects.Graphics;
-  private stockLabels: Partial<Record<'milk' | 'bread', Phaser.GameObjects.Text>> = {};
+  private stockLabels: Partial<Record<'milk' | 'bread' | 'rice', Phaser.GameObjects.Text>> = {};
   private cursors?: Phaser.Types.Input.Keyboard.CursorKeys;
   private keys?: Record<string, Phaser.Input.Keyboard.Key>;
   private facing = 'down';
@@ -57,7 +58,9 @@ export class SimulationScene extends Phaser.Scene {
     }
     const book=this.add.graphics().setDepth(450);book.fillStyle(0x70523d).fillRect(258,420,18,14).fillStyle(0xe9d7ad).fillRect(260,421,14,10).fillStyle(0x9b7353).fillRect(267,421,1,10);
     this.label(240,386,'员工须知', '#70523d');
+    this.flower=this.add.graphics().setDepth(450);this.flower.fillStyle(0x99734d).fillRect(325,423,10,8).fillStyle(0x6c986f).fillRect(329,411,2,13).fillStyle(0xd8a39d).fillRect(326,409,8,6);
     this.guide=this.add.graphics().setDepth(1500);
+    this.stockLabels.rice=this.add.text(416,49,'饭团 0/6',{fontSize:'11px',color:'#493a32',backgroundColor:'#fff5df'}).setOrigin(.5).setDepth(1000);
     this.stockGraphics=this.add.graphics().setDepth(400);
     this.customerSprite=this.add.image(this.shop.customer.x,this.shop.customer.y,'customer-down-0').setOrigin(.5,.85).setVisible(false);
     this.heldBox=this.add.image(0,0,'crate').setVisible(false);
@@ -122,14 +125,15 @@ export class SimulationScene extends Phaser.Scene {
     const direction=Math.abs(cx)>Math.abs(cy)?cx>0?'right':'left':cy>0?'down':'up';
     this.customerSprite.setVisible(s.customerState!=='outside'&&s.customerState!=='gone').setPosition(s.customer.x,s.customer.y).setDepth(s.customer.y).setTexture(`customer-${cx||cy?direction:'down'}-${cx||cy?1+Math.floor(time/160)%2:0}`);
     this.stockGraphics.clear();
-    for(const goods of ['milk','bread'] as const){
-      const f=fixtures.find(f=>f.id===goods)!;
+    for(const goods of ['milk','bread','rice'] as const){
+      const f=fixtures.find(f=>f.id===(goods==='rice'?'freezer':goods))!;
       for(let i=0;i<s.shelves[goods];i++){
         const x=f.x*TILE+10+(i%2)*27,y=f.y*TILE+7+Math.floor(i/2)*29;
-        this.stockGraphics.fillStyle(goods==='milk'?0xe8efe4:0xd7a66e).fillRect(x,y,16,20).fillStyle(goods==='milk'?0x729b9d:0x986f47).fillRect(x+3,y+8,10,5);
+        this.stockGraphics.fillStyle(goods==='milk'?0xe8efe4:goods==='rice'?0xf1edda:0xd7a66e).fillRect(x,y,16,20).fillStyle(goods==='milk'?0x729b9d:goods==='rice'?0x506c50:0x986f47).fillRect(x+3,y+8,10,5);
       }
-      this.stockLabels[goods]?.setText(`${goods==='milk'?'牛奶':'面包'} ${s.shelves[goods]}/${s.capacity}`);
+      this.stockLabels[goods]?.setText(`${goods==='milk'?'牛奶':goods==='bread'?'面包':'饭团'} ${s.shelves[goods]}/${s.capacity}`);if(goods==='rice')this.stockLabels.rice?.setVisible(s.business.level>=2);
     }
+    this.flower.setVisible(s.business.level>=3);
     this.guide.clear();
     if(this.guideTarget){const p=this.guideTarget;const pulse=matchMedia('(prefers-reduced-motion: reduce)').matches?1:.8+Math.sin(time/230)*.2;
       this.guide.lineStyle(3,0xc96e43,pulse).strokeCircle(p.x,p.y,20);this.guide.fillStyle(0xb75a36,pulse).fillRect(p.x-3,p.y-43,6,14).fillTriangle(p.x-8,p.y-30,p.x+8,p.y-30,p.x,p.y-22);

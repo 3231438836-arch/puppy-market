@@ -5,7 +5,6 @@ test('走动、两次取箱补货、顾客购物、扫描找零、离店结算',
  test.setTimeout(100000);const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('/');
  await page.getByLabel('给吉娃娃店长取个名字').fill('小栗');await page.getByRole('button',{name:'进入便利店 →'}).click();await page.getByRole('button',{name:'跳过教程'}).click();
  await expect(page.locator('.joystick')).toBeVisible();
- await page.getByRole('button',{name:'开店',exact:true}).click();
  for(const goods of ['milk','bread'] as const){
   await walk(page,center(2,4));await page.getByRole('button',{name:'互动：仓库 · E',exact:true}).click();
   await page.getByRole('button',{name:goods==='milk'?'取牛奶箱':'取面包箱'}).click();await page.getByRole('button',{name:'返回店铺'}).click();
@@ -13,7 +12,7 @@ test('走动、两次取箱补货、顾客购物、扫描找零、离店结算',
   await walk(page,goods==='milk'?center(4,9):center(10,9));await page.keyboard.press('e');
   await expect(page.getByRole('status')).toContainText('补货完成');
  }
- await walk(page,center(9,12));await expect(page.getByTestId('customer-status')).toHaveText('顾客等待结账',{timeout:20000});
+ await page.getByRole('button',{name:'开店',exact:true}).click();await walk(page,center(9,12));await expect(page.getByTestId('customer-status')).toHaveText('顾客等待结账',{timeout:20000});
  await page.getByRole('button',{name:'互动：收银台 · E',exact:true}).click();
  const exit=page.getByRole('button',{name:'暂离收银台'});expect(await exit.evaluate(el=>{const r=el.getBoundingClientRect();return el.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2));})).toBe(true);
  await page.getByRole('button',{name:'扫描下一件'}).click();await exit.click();await page.getByRole('button',{name:'互动：收银台 · E',exact:true}).click();

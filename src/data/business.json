@@ -1,0 +1,18 @@
+{
+ "startingCash":60,
+ "goods":[
+  {"id":"milk","cost":4,"level":1},
+  {"id":"bread","cost":3,"level":1},
+  {"id":"rice","cost":6,"level":2}
+ ],
+ "levels":[
+  {"level":1,"xp":0,"unlock":"牛奶与面包"},
+  {"level":2,"xp":15,"unlock":"冰柜饭团货位"},
+  {"level":3,"xp":50,"unlock":"柜台小花盆"}
+ ],
+ "goals":[
+  {"id":"orders","title":"完成订单","target":1,"coins":3,"xp":4},
+  {"id":"restocks","title":"补货两次","target":2,"coins":2,"xp":4},
+  {"id":"change","title":"正确找零一次","target":1,"coins":2,"xp":3}
+ ]
+}

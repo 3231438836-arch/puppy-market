@@ -18,8 +18,14 @@ test('新存档教程真实操作、笔记分页、中途恢复到货箱、首�
  await expect(page.getByTestId('stock')).toContainText('牛奶 3/6');await page.getByRole('button',{name:'开店',exact:true}).click();await walk(page,center(9,12));await expect(page.getByTestId('customer-status')).toHaveText('顾客等待结账',{timeout:15000});
  await page.getByRole('button',{name:'互动：收银台 · E',exact:true}).click();await page.getByRole('button',{name:'扫描下一件'}).click();await page.getByRole('button',{name:'确认总价'}).click();await page.getByRole('button',{name:'收现金 20'}).click();
  await page.getByRole('button',{name:'+5',exact:true}).click();await page.getByRole('button',{name:'+5',exact:true}).click();await page.getByRole('button',{name:'+2',exact:true}).click();await page.getByRole('button',{name:'交付找零，完成交易'}).click();
- await expect(page.getByTestId('customer-status')).toHaveText('顾客已离店',{timeout:15000});await page.getByRole('button',{name:'打烊结算'}).click();await page.getByRole('button',{name:'完成教程，开始自由经营'}).click();
- await expect(page.getByRole('complementary',{name:'新手引导'})).toHaveCount(0);expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('puppy-mart.tutorial.v1')!).status)).toBe('completed');await page.screenshot({path:'test-results/p1-first-batch.png',fullPage:true});
+ await expect(page.getByTestId('customer-status')).toHaveText('顾客已离店',{timeout:15000});await page.getByRole('button',{name:'打烊结算'}).click();
+ await expect(page.locator('.ledger p').filter({hasText:'今日销售额'})).toHaveText('今日销售额 8');await expect(page.locator('.ledger p').filter({hasText:'今日经营利润'})).toHaveText('今日经营利润 4');await expect(page.locator('.ledger p').filter({hasText:'可支配资金'})).toHaveText('可支配资金 73');
+ await page.getByRole('button',{name:'完成教程，开始自由经营'}).click();
+ await expect(page.getByRole('complementary',{name:'新手引导'})).toHaveCount(0);expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('puppy-mart.tutorial.v1')!).status)).toBe('completed');await page.screenshot({path:'test-results/p1-growth.png',fullPage:true});
+ await expect(page.locator('.sim-head')).toContainText('Lv.2');await walk(page,center(2,4));await page.getByRole('button',{name:'互动：仓库 · E',exact:true}).click();
+ await page.getByRole('button',{name:'采购饭团箱 · 18',exact:true}).click();await page.getByRole('button',{name:'取饭团箱',exact:true}).click();await page.getByRole('button',{name:'返回店铺'}).click();await walk(page,center(12,4));await page.keyboard.press('e');await expect(page.getByTestId('stock')).toContainText('饭团 3/6');
+ await page.reload();await page.getByRole('button',{name:'进入便利店 →'}).click();await expect(page.locator('.sim-head')).toContainText('55 资金');await expect(page.getByTestId('stock')).toContainText('饭团 3/6');
+ await page.getByRole('button',{name:'音效：开',exact:true}).click();await page.reload();await page.getByRole('button',{name:'进入便利店 →'}).click();await expect(page.getByRole('button',{name:'音效：关',exact:true})).toBeVisible();
 });
 test('跳过持久化、手册随时可读、复习不覆盖正式营业',async({page})=>{
  await page.goto('/');await page.getByLabel('给吉娃娃店长取个名字').fill('栗');await page.getByRole('button',{name:'进入便利店 →'}).click();await page.getByRole('button',{name:'跳过教程'}).click();await page.reload();await page.getByRole('button',{name:'进入便利店 →'}).click();await expect(page.getByRole('button',{name:'跳过教程'})).toHaveCount(0);

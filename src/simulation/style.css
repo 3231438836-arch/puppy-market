@@ -25,3 +25,8 @@ body.sim-dialog-open .movement-dock{visibility:hidden;pointer-events:none}
 #app.playing #controls{flex-shrink:0;max-height:38dvh;overflow-y:auto;overscroll-behavior:contain}
 #app.playing .movement-dock{position:relative;flex-shrink:0;bottom:auto}
 #app.playing footer{display:none}
+.ledger{display:grid;grid-template-columns:1fr 1fr;gap:7px;background:#fff4dc;padding:10px;border:2px solid #c8b08a;border-radius:10px}.ledger p{margin:0;font-size:12px}.ledger b{display:block;font-size:20px;color:#396a5c}.level-card{background:#dce6d4;padding:12px;border-radius:9px;margin:12px 0}.goals{background:#eee1c5;padding:8px;border-radius:7px}.goals small{font-size:11px;color:#765c42}.warehouse-row{border-bottom:1px dashed #b5a17e;padding:9px 0}.warehouse-row p{font-size:12px;margin:3px 0}.sim-head{flex-wrap:wrap}.sim-head span{font-size:11px}
+#feedback-toast{position:fixed;top:max(50px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);max-width:90vw;background:#3c655a;color:#fff8df;padding:12px 18px;border:2px solid #f2d897;border-radius:9px;box-shadow:0 4px 12px #3c332940;z-index:50;pointer-events:none;opacity:0;font-size:14px;text-align:center}
+#feedback-toast.show{animation:feedback-in 2.8s both}@keyframes feedback-in{0%{opacity:0;translate:0 4px}8%,80%{opacity:1;translate:0 0}100%{opacity:0}}
+@media(prefers-reduced-motion:reduce){#feedback-toast.show{animation:none;opacity:1}}
+.notebook-page p{white-space:pre-wrap}

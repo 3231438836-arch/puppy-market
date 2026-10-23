@@ -21,10 +21,10 @@ describe('可走动便利店切片',()=>{
  it('货架容量有上限，货箱余额保留，空仓不能取箱',()=>{
   const s=new ShopSimulation();at(s,'warehouse');s.takeBox('milk');at(s,'milk');s.restock('milk');at(s,'warehouse');s.takeBox('milk');at(s,'milk');s.restock('milk');expect(s.shelves.milk).toBe(6);at(s,'warehouse');expect(s.takeBox('milk')).toBe(false);
  });
- it('空架顾客等待，补货后自主购物排队，扫描现金找零后离店',()=>{
-  const s=new ShopSimulation();s.startDay();advance(s,'waiting-stock');expect(s.basket).toEqual([]);
+ it('无库存不生成购物订单，补货后自主购物排队，扫描现金找零后离店',()=>{
+  const s=new ShopSimulation();s.startDay();s.tick(2);expect(s.customerState).toBe('outside');expect(s.basket).toEqual([]);
   for(const id of ['milk','bread'] as const){at(s,'warehouse');s.takeBox(id);at(s,id);s.restock(id);}
-  advance(s,'queueing');expect(s.basket).toEqual(['milk','bread']);expect(s.shelves).toEqual({milk:2,bread:2});
+  advance(s,'queueing');expect(s.basket).toEqual(['milk','bread']);expect(s.shelves).toMatchObject({milk:2,bread:2});
   expect(s.scan()).toBe(false);at(s,'counter');expect(s.confirmTotal()).toBe(false);expect(s.receiveCash()).toBe(false);
   s.scan();s.scan();expect(s.scan()).toBe(false);expect(s.confirmTotal()).toBe(true);s.receiveCash();
   s.addChange(5);expect(s.finishSale()).toBe(false);expect(s.coins).toBe(0);s.addChange(1);expect(s.finishSale()).toBe(true);expect(s.coins).toBe(14);expect(s.served).toBe(1);expect(s.finishSale()).toBe(false);
