@@ -8,7 +8,10 @@ import { loadSession, restoreSession, snapshot, writeStore, SESSION_KEY } from '
 import { growthSummary, goalList } from './growth-ui';
 import { Sound } from './sound';
 import { type Goods } from './world';
+import { LayoutController } from './layout';
 import './style.css';
+import './layout.css';
+const layout=new LayoutController();
 const sound=new Sound();let lastFeedback=0;let toastTimer=0;
 const panel=document.querySelector<HTMLElement>('#controls')!;
 const gameElement=document.querySelector<HTMLElement>('#game')!;
@@ -25,7 +28,7 @@ let notebookPage=0;
 function saveProgress(){if(entered){if(!writeStore(sessionKey,snapshot(s),storedSession.writable)&&storedSession.writable)saveNotice='当前浏览器无法保存进度，请勿关闭页面。';tutorial.save();}}
 function nextDay(){s=s.nextDay()??s;scene.shop=s;s.message='新的一天：'+(s.business.level>=2?'饭团已解锁，去仓库采购并放到冰柜货位。':'补货后接待顾客，完成目标可积累经验。');dialog=null;scene.modal=false;paused=false;scene.paused=false;lastSignature='';saveProgress();render();}
 
-new Phaser.Game({type:Phaser.AUTO,parent:'game',width:430,height:420,pixelArt:true,backgroundColor:'#efdfc2',scale:{mode:Phaser.Scale.FIT,autoCenter:Phaser.Scale.CENTER_BOTH},scene:[scene],audio:{noAudio:true}});
+const game=new Phaser.Game({type:Phaser.AUTO,parent:'game',width:430,height:420,pixelArt:true,backgroundColor:'#efdfc2',scale:{mode:Phaser.Scale.RESIZE,autoCenter:Phaser.Scale.CENTER_BOTH},scene:[scene],audio:{noAudio:true}});
 const escape=(text:string)=>text.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]!)).replaceAll(String.fromCharCode(34),'&quot;').replaceAll(String.fromCharCode(39),'&#39;');
 let entered=false,managerName=loadName(),dialog:'warehouse'|'register'|'notebook'|null=null,lastSignature='',saveNotice='';
 let paused=false;
@@ -41,9 +44,9 @@ function render(){
  if(dialog==='register'&&!s.atRegister)dismissDialog();
  if(tutorial.observe(s))saveProgress();
  scene.guideTarget=tutorial.target(s);scene.highlightPlayer=tutorial.active&&tutorial.step===0;
- scene.modal=!!dialog;
- document.body.classList.toggle('sim-dialog-open',!!dialog);
- const signature=JSON.stringify([s.nearby,s.warehouse,s.shelves,s.carrying,s.customerState,s.path.length===0,s.basket,s.scanned,s.confirmed,s.cashReceived,s.change,s.coins,s.served,s.open,s.closed,Math.ceil(s.remaining),s.message,dialog,paused,tutorial.record,notebookPage,s.business.data,s.feedbackRevision,sound.enabled]);
+ scene.modal=!!dialog||layout.open;
+ document.body.classList.toggle('sim-dialog-open',!!dialog||layout.open);
+ const signature=JSON.stringify([s.nearby,s.warehouse,s.shelves,s.carrying,s.customerState,s.path.length===0,s.basket,s.scanned,s.confirmed,s.cashReceived,s.change,s.coins,s.served,s.open,s.closed,Math.ceil(s.remaining),s.message,dialog,paused,tutorial.record,notebookPage,s.business.data,s.feedbackRevision,sound.enabled,layout.open]);
  if(s.feedbackRevision!==lastFeedback){lastFeedback=s.feedbackRevision;const toast=document.querySelector<HTMLElement>('#feedback-toast');clearTimeout(toastTimer);toast?.classList.remove('show');if(s.feedbackRevision>0){if(toast){toast.textContent=s.feedback;void toast.offsetWidth;toast.classList.add('show');toastTimer=window.setTimeout(()=>toast.classList.remove('show'),2800);}sound.play(s.feedback.startsWith('扫描')?'scan':'sale');}}
  if(signature===lastSignature)return;lastSignature=signature;
  const padButton=document.querySelector<HTMLButtonElement>('.interact-pad');
@@ -61,11 +64,11 @@ function dialogContent(){
 
  const pauseNotice=paused?'<p role="status">游戏已暂停 <button data-do="pause">继续操作</button></p>':'';
  if(dialog==='warehouse')return `<section class="sim-dialog" aria-label="仓库取货"><div class="dialog-heading"><h2>仓库 · 每箱 3 件</h2><button data-do="dismiss">返回店铺</button></div>${pauseNotice}<p>可用资金 ${s.business.data.balance} 金币</p>${s.business.unlocked.map(id=>`<div class="warehouse-row"><b>${goodsName(id)} · 仓库 ${s.warehouse[id]} 件</b><p>进价 ${s.business.cost(id)} / 售价 ${products.find(p=>p.id===id)!.price} / 单件毛利 ${products.find(p=>p.id===id)!.price-s.business.cost(id)}</p><div class="sim-actions"><button data-do="take-${id}">取${goodsName(id)}箱</button><button data-do="buy-${id}">采购${goodsName(id)}箱 · ${s.business.cost(id)*3}</button></div></div>`).join('')}<p class="muted">${s.business.level<2?'Lv.2 解锁冰柜饭团货位。':''}每箱三件；采购扣资金，取箱仅转移已有库存。</p><button data-do="return">放回货箱</button></section>`;
- if(dialog==='register')return `<section class="sim-dialog" aria-label="收银操作"><div class="dialog-heading"><h2>收银台 · 现金结账</h2><button data-do="dismiss">暂离收银台</button></div>${pauseNotice}<ol>${s.basket.map((id,i)=>`<li>${goodsName(id)} · ${products.find(p=>p.id===id)!.price} 金币 ${i<s.scanned?'✓ 已扫描':'待扫描'}</li>`).join('')}</ol><p>已扫描 ${s.scanned}/${s.basket.length} · 已扫描金额 ${s.basket.slice(0,s.scanned).reduce((n,id)=>n+products.find(p=>p.id===id)!.price,0)} · 合计 ${s.total} 金币</p><div class="sim-actions"><button data-do="scan" ${s.confirmed||s.scanned===s.basket.length?'disabled':''}>扫描下一件</button><button data-do="confirm" ${s.scanned!==s.basket.length||s.confirmed?'disabled':''}>确认总价</button><button data-do="cash" ${!s.confirmed||s.cashReceived?'disabled':''}>收现金 ${s.tender}</button></div>${s.cashReceived?`<p>应找零 ${s.changeDue} 金币 · 已放零钱 <b data-testid="change">${s.change}</b></p><div class="sim-actions"><button data-do="change-1">+1</button><button data-do="change-2">+2</button><button data-do="change-5">+5</button><button data-do="clear-change">清空零钱</button></div><button class="primary wide" data-do="finish">交付找零，完成交易</button>`:''}<p class="muted">操作界面暂停营业计时。暂离后扫描进度保留。</p></section>`;
+ if(dialog==='register')return `<section class="sim-dialog" aria-label="收银操作"><div class="dialog-heading"><h2>收银台 · 现金结账</h2><button data-do="dismiss">暂离收银台</button></div>${pauseNotice}<div class="register-items"><ol>${s.basket.map((id,i)=>`<li>${goodsName(id)} · ${products.find(p=>p.id===id)!.price} 金币 ${i<s.scanned?'✓ 已扫描':'待扫描'}</li>`).join('')}</ol><p>已扫描 ${s.scanned}/${s.basket.length} · 已扫描金额 ${s.basket.slice(0,s.scanned).reduce((n,id)=>n+products.find(p=>p.id===id)!.price,0)} · 合计 ${s.total} 金币</p></div><div class="register-payment"><div class="sim-actions"><button data-do="scan" ${s.confirmed||s.scanned===s.basket.length?'disabled':''}>扫描下一件</button><button data-do="confirm" ${s.scanned!==s.basket.length||s.confirmed?'disabled':''}>确认总价</button><button data-do="cash" ${!s.confirmed||s.cashReceived?'disabled':''}>收现金 ${s.tender}</button></div>${s.cashReceived?`<p>应找零 ${s.changeDue} 金币 · 已放零钱 <b data-testid="change">${s.change}</b></p><div class="sim-actions"><button data-do="change-1">+1</button><button data-do="change-2">+2</button><button data-do="change-5">+5</button><button data-do="clear-change">清空零钱</button></div><button class="primary wide" data-do="finish">交付找零，完成交易</button>`:''}</div><p class="muted">操作界面暂停营业计时。暂离后扫描进度保留。</p></section>`;
  return '';
 }
 function interact(){
- if(!entered||paused||dialog||s.closed)return;
+ if(!entered||paused||dialog||layout.open||s.closed)return;
  // Do not reset Phaser's E key while its keydown is being dispatched.
  if(s.nearby==='notebook'){dialog='notebook';notebookPage=0;tutorial.observe(s,'notebook');}
  else if(s.nearby==='warehouse'){dialog='warehouse';scene.modal=true;}
@@ -81,12 +84,13 @@ function interact(){
  saveProgress();render();
 }
 scene.onRefresh=render;scene.onInteract=interact;
-document.addEventListener('keydown',e=>{if(e.key==='Escape'&&dialog){e.preventDefault();dismissDialog();render();}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&dialog&&!layout.open){e.preventDefault();dismissDialog();render();}});
 panel.addEventListener('click',e=>{
  const action=(e.target as HTMLElement).closest<HTMLButtonElement>('button')?.dataset.do;if(!action)return;
  resetMovement();
  if(action==='enter'){
   const input=panel.querySelector<HTMLInputElement>('#manager-name')!;managerName=normalizeName(input.value);
+  if(!layout.preferences.selected){layout.show('choice');return;}
   if(!managerName){input.setCustomValidity('请先给店长取名。');input.reportValidity();return;}
   saveNotice=storedSession.warning||tutorial.warning||(saveName(managerName)?'':'名字暂时无法保存；当前仍可游玩。');entered=true;document.querySelector('#app')!.classList.add('playing');scene.activePlay=true;setupJoystick();
  }else if(action==='restart'){nextDay();return;}
@@ -129,7 +133,7 @@ function setupJoystick(){
   const length=Math.hypot(dx,dy),scale=Math.min(1,32/(length||1));
   scene.joystick={x:length<6?0:dx*scale/32,y:length<6?0:dy*scale/32};stick.style.transform=`translate(${dx*scale}px,${dy*scale}px)`;
  }
- pad.addEventListener('pointerdown',e=>{if(pointer!==null||paused||dialog||s.closed)return;pointer=e.pointerId;pad.setPointerCapture(e.pointerId);point(e);e.preventDefault();});
+ pad.addEventListener('pointerdown',e=>{if(pointer!==null||paused||dialog||layout.open||s.closed)return;pointer=e.pointerId;pad.setPointerCapture(e.pointerId);point(e);e.preventDefault();});
  pad.addEventListener('pointermove',e=>{if(e.pointerId===pointer)point(e);});
  for(const event of ['pointerup','pointercancel','lostpointercapture'])pad.addEventListener(event,(e)=>{if((e as PointerEvent).pointerId===pointer){reset();saveProgress();}});
  dock.querySelector('button')!.addEventListener('pointerdown',e=>{e.preventDefault();interact();});
@@ -140,3 +144,10 @@ function setupJoystick(){
 render();
 setInterval(saveProgress,1000);
 window.addEventListener('pagehide',saveProgress);
+
+const layoutButton=document.createElement('button');layoutButton.id='layout-settings';layoutButton.textContent='布局设置';layoutButton.addEventListener('click',()=>{resetMovement();layout.show();});document.querySelector('header')!.append(layoutButton);
+layout.onChange=()=>{resetMovement();lastSignature='';render();};
+layout.mount();
+let resizeFrame=0;
+const resizeCanvas=()=>{cancelAnimationFrame(resizeFrame);resizeFrame=requestAnimationFrame(()=>{const bounds=gameElement.getBoundingClientRect();const width=Math.floor(bounds.width),height=Math.floor(bounds.height);if(game.isBooted&&width>0&&height>0&&(game.scale.width!==width||game.scale.height!==height)){game.scale.setParentSize(width,height);scene.cameras?.main?.setSize(width,height);}});};
+new ResizeObserver(resizeCanvas).observe(gameElement);window.addEventListener('resize',resizeCanvas);game.events.once('ready',resizeCanvas);

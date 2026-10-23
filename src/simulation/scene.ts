@@ -73,7 +73,7 @@ export class SimulationScene extends Phaser.Scene {
     this.events.once('shutdown',()=>window.removeEventListener('blur',this.resetInput));
     this.onRefresh();
   }
-  resetInput = () => { this.joystick={x:0,y:0};this.input.keyboard?.resetKeys(); };
+  resetInput = () => { this.joystick={x:0,y:0};this.input?.keyboard?.resetKeys(); };
   private label(x:number,y:number,text:string,color='#574b3c') {
     return this.add.text(x,y,text,{fontSize:'11px',color,fontFamily:'sans-serif'}).setOrigin(.5).setDepth(1000);
   }

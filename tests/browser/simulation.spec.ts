@@ -60,3 +60,5 @@ for(const viewport of [{width:390,height:844},{width:320,height:640}])test(`æ‰‹æ
  await page.waitForTimeout(350);await touch.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
  expect((await position(page)).x).toBeGreaterThan(original.x+15);
 });
+
+test.beforeEach(async({page})=>{await page.addInitScript(()=>{if(!localStorage.getItem('puppy-mart.layout.v1'))localStorage.setItem('puppy-mart.layout.v1',JSON.stringify({version:1,selected:true,preferred:'portrait',joystickSize:120,buttonSize:78,joystickInset:18}));});});
