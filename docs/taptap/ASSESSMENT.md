@@ -30,3 +30,8 @@ https://developer.taptap.cn/minigameapidoc/quick-start/mcp-guide/mcp-setup/
 ## 存档注意
 
 现有进度在浏览器本地存储。不同域名、不同浏览器或设备不会自动共享localStorage；即使保留全部旧字段，也不能承诺GitHub Pages存档自动出现在TapTap域名下。跨入口迁移方式需另行核对和设计，不能靠自动清空/替换存档解决。
+
+
+## 后续核对更新
+
+以上为初步检查记录，最新状态：已在/tmp解包官方CLI 2026.10.21并成功运行只读版本、技能及schema查询；没有全局安装、登录或平台写操作。已读取用户上传的两份广告HTML，确认严格完整观看回调，但H5 SDK初始化仍缺失。平台无关广告服务与DEV独立模拟已经实现，真实广告保持关闭。详细见 [H5自测方案](H5-SELFTEST-PLAN.md) 与 [广告实现说明](../ads/IMPLEMENTATION.md)。

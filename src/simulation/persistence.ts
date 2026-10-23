@@ -1,3 +1,4 @@
+import {validAdLedger,freshAdLedger} from '../ads/reward-ledger';
 import {validImprovements,freshImprovements} from './improvements';
 import {validEnvironmentEvents} from './environment-events';
 import {Narrative,validNarrative} from './narrative';
@@ -16,11 +17,12 @@ const legacyStand=(p:Point)=>[-9,9].every(dx=>[-9,9].every(dy=>{const x=Math.flo
 const point=(p:unknown):p is Point=>!!p&&typeof p==='object'&&number((p as Point).x,512)&&number((p as Point).y,640)&&(canStand(p as Point)||legacyStand(p as Point));
 const goods=(id:unknown):id is Goods=>id==='milk'||id==='bread'||id==='rice';
 export function snapshot(shop:ShopSimulation){
- return {...shop.preservedSessionFields,version:1,improvements:shop.improvements,environmentEvents:shop.environmentEvents,narrative:shop.narrative.data,flow:shop.flow,tutorialDay:shop.tutorialDay,business:shop.business.data,player:shop.player,customer:shop.customer,customerState:shop.customerState,path:shop.path,shoppingIndex:shop.shoppingIndex,shoppingList:shop.shoppingList,warehouse:shop.warehouse,shelves:shop.shelves,carrying:shop.carrying,basket:shop.basket,scanned:shop.scanned,confirmed:shop.confirmed,cashReceived:shop.cashReceived,change:shop.change,coins:shop.coins,served:shop.served,open:shop.open,closed:shop.closed,remaining:shop.remaining};
+ return {...shop.preservedSessionFields,version:1,adRewards:shop.adRewards,improvements:shop.improvements,environmentEvents:shop.environmentEvents,narrative:shop.narrative.data,flow:shop.flow,tutorialDay:shop.tutorialDay,business:shop.business.data,player:shop.player,customer:shop.customer,customerState:shop.customerState,path:shop.path,shoppingIndex:shop.shoppingIndex,shoppingList:shop.shoppingList,warehouse:shop.warehouse,shelves:shop.shelves,carrying:shop.carrying,basket:shop.basket,scanned:shop.scanned,confirmed:shop.confirmed,cashReceived:shop.cashReceived,change:shop.change,coins:shop.coins,served:shop.served,open:shop.open,closed:shop.closed,remaining:shop.remaining};
 }
 export type SessionData=ReturnType<typeof snapshot>;
 export function validSession(value:unknown):value is SessionData{
  if(!value||typeof value!=='object')return false;const v=value as SessionData;
+ if(v.adRewards!==undefined&&!validAdLedger(v.adRewards))return false;
  if(v.improvements!==undefined&&!validImprovements(v.improvements))return false;
  if(v.environmentEvents!==undefined&&!validEnvironmentEvents(v.environmentEvents))return false;
  if(v.narrative!==undefined&&!validNarrative(v.narrative))return false;
@@ -37,7 +39,8 @@ export function validSession(value:unknown):value is SessionData{
  return true;
 }
 export function restoreSession(v:SessionData):ShopSimulation{
- const shop=new ShopSimulation();for(const key of Object.keys(snapshot(shop))){if(key==='version'||key==='business'||key==='flow'||key==='tutorialDay'||key==='narrative'||key==='environmentEvents'||key==='improvements')continue;Object.assign(shop,{[key]:structuredClone(v[key as keyof SessionData])});}shop.warehouse.rice??=0;shop.shelves.rice??=0;shop.business=v.business?new Business(v.business):new Business();if(!v.business)shop.business.importLegacy(shop.coins,shop.served);
+ const shop=new ShopSimulation();for(const key of Object.keys(snapshot(shop))){if(key==='version'||key==='business'||key==='flow'||key==='tutorialDay'||key==='narrative'||key==='environmentEvents'||key==='improvements'||key==='adRewards')continue;Object.assign(shop,{[key]:structuredClone(v[key as keyof SessionData])});}shop.warehouse.rice??=0;shop.shelves.rice??=0;shop.business=v.business?new Business(v.business):new Business();if(!v.business)shop.business.importLegacy(shop.coins,shop.served);
+ shop.adRewards=structuredClone(v.adRewards??freshAdLedger());
  shop.improvements=structuredClone(v.improvements??freshImprovements());
  shop.environmentEvents=structuredClone(v.environmentEvents??{});
  for(const record of Object.values(shop.environmentEvents))if(record.state==='in-progress')record.state='inactive';

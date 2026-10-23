@@ -1,0 +1,82 @@
+{
+  "enabled": false,
+  "dailyLimit": 2,
+  "timeoutMs": 180000,
+  "environments": {
+    "web": {
+      "enabled": false,
+      "placements": {
+        "coupon": null,
+        "materials": null,
+        "coins": null
+      }
+    },
+    "taptap-test": {
+      "enabled": false,
+      "placements": {
+        "coupon": null,
+        "materials": null,
+        "coins": null
+      }
+    },
+    "taptap-production": {
+      "enabled": false,
+      "placements": {
+        "coupon": null,
+        "materials": null,
+        "coins": null
+      }
+    }
+  },
+  "rewards": [
+    {
+      "id": "coupon",
+      "enabled": true,
+      "kind": "coupon",
+      "label": "普通进货优惠券",
+      "amount": 1,
+      "couponSubsidy": 1,
+      "dailyLimit": 1,
+      "pool": [],
+      "visible": true
+    },
+    {
+      "id": "materials",
+      "enabled": true,
+      "kind": "materials",
+      "label": "旧物小盲盒",
+      "amount": 1,
+      "couponSubsidy": 0,
+      "dailyLimit": 1,
+      "pool": [
+        {
+          "id": "wood",
+          "label": "木片",
+          "weight": 50
+        },
+        {
+          "id": "cloth",
+          "label": "布料",
+          "weight": 30
+        },
+        {
+          "id": "paint",
+          "label": "颜料",
+          "weight": 20
+        }
+      ],
+      "visible": true
+    },
+    {
+      "id": "coins",
+      "enabled": false,
+      "kind": "coins",
+      "label": "经营金币",
+      "amount": 3,
+      "couponSubsidy": 0,
+      "dailyLimit": 1,
+      "pool": [],
+      "visible": false
+    }
+  ]
+}

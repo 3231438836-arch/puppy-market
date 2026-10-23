@@ -1,3 +1,4 @@
+import {freshAdLedger,ledgerDay,type AdLedger} from '../ads/reward-ledger';
 import {freshImprovements,discoverImprovement,noteTemporaryHelp,installImprovement,type ImprovementRecord} from './improvements';
 import environmentDefinitions from '../data/events/environment-events.json' with {type:'json'};
 import {resolveEnvironmentEvent,beginEnvironmentEvent,finishEnvironmentEvent,type EnvironmentEventDefinition,type EnvironmentEventRecords} from './environment-events';
@@ -64,6 +65,7 @@ export function findPath(from: Point, to: Point,occupied:Point[]=[]): Point[] {
 }
 export type CustomerState = 'outside' | 'shopping' | 'waiting-stock' | 'queueing' | 'leaving' | 'gone';
 export class ShopSimulation {
+  adRewards:AdLedger=freshAdLedger();
   improvements:ImprovementRecord=freshImprovements();
   environmentEvents:EnvironmentEventRecords={};
   business=new Business();
@@ -278,9 +280,17 @@ export class ShopSimulation {
     if(!this.business.purchase(goods)){this.message='资金不足或商品未解锁，采购未扣款。';return false;}
     this.warehouse[goods]+=3;this.message=`采购${products.find(p=>p.id===goods)!.name}一箱，支出 ${this.business.cost(goods)*3} 金币。`;return true;
   }
+  couponOffer(goods:Goods){const face=Object.keys(this.adRewards.coupons).map(Number).filter(n=>this.adRewards.coupons[String(n)]>0).sort((a,b)=>a-b)[0];if(!face)return null;const gross=this.business.cost(goods)*3,subsidy=Math.min(gross,face);return {face,gross,subsidy,net:gross-subsidy};}
+  purchaseWithCoupon(goods:Goods){
+    const offer=this.couponOffer(goods);if(this.closed||this.nearby!=='warehouse'||!offer||!this.business.unlocked.includes(goods)||this.business.data.balance<offer.net)return false;
+    this.business.data.balance+=offer.subsidy;
+    if(!this.purchaseBox(goods)){this.business.data.balance-=offer.subsidy;return false;}
+    this.adRewards.coupons[String(offer.face)]--;this.adRewards.revision++;ledgerDay(this.adRewards,this.business.data.day).couponSubsidies+=offer.subsidy;
+    this.message=`已使用一张进货券：本箱原价 ${offer.gross}，补贴 ${offer.subsidy}，净支出 ${offer.net}。`;return true;
+  }
   nextDay(){
     if(!this.closed)return null;
-    const next=new ShopSimulation();next.business=new Business(this.business.data);next.business.nextDay();next.warehouse={...this.warehouse};next.shelves={...this.shelves};next.carrying=this.carrying?{...this.carrying}:null;next.preservedSessionFields={...this.preservedSessionFields};next.narrative=new Narrative(this.narrative.data,this.narrative.content,this.narrative.allowDrafts);next.npcPreview=this.npcPreview;next.environmentEvents=structuredClone(this.environmentEvents);next.improvements=structuredClone(this.improvements);return next;
+    const next=new ShopSimulation();next.business=new Business(this.business.data);next.business.nextDay();next.warehouse={...this.warehouse};next.shelves={...this.shelves};next.carrying=this.carrying?{...this.carrying}:null;next.preservedSessionFields={...this.preservedSessionFields};next.narrative=new Narrative(this.narrative.data,this.narrative.content,this.narrative.allowDrafts);next.npcPreview=this.npcPreview;next.environmentEvents=structuredClone(this.environmentEvents);next.improvements=structuredClone(this.improvements);next.adRewards=structuredClone(this.adRewards);return next;
   }
   closeDay() { if(!this.canClose)return false;this.closed=true;this.open=false;this.message='今日打烊，库存、资金与顾客记录已保留。';return true; }
 }

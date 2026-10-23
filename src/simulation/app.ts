@@ -1,3 +1,7 @@
+import {adConfig,adEnvironment,type RewardId} from '../ads/config';
+import {RewardedAdService,type RewardAccount} from '../ads/service';
+import {UnconfiguredTapTapProvider} from '../ads/provider';
+import {renderAdPanel,adResultText,adInventory} from '../ads/ui';
 import {renderTodoBook,todoPageCount,type TodoTab} from './todo-ui';
 import './todo.css';
 import hamsterPortrait from '../art/portraits/customer001.svg?url';
@@ -30,24 +34,43 @@ const gameElement=document.querySelector<HTMLElement>('#game')!;
 gameElement.classList.add('simulation-map');
 document.querySelector('header span')!.textContent='街角便利店 · P1 教学与成长';
 const scene=new SimulationScene();
+const developmentAdHarness=import.meta.env.DEV&&new URLSearchParams(location.search).get('ads-test')==='1';
+const advertisementEnvironment=developmentAdHarness?'taptap-test':adEnvironment(import.meta.env.VITE_AD_ENVIRONMENT);
+const adSandbox=advertisementEnvironment==='taptap-test';
+const isolatedProfile=()=>npcPreview||adSandbox;
 const npcPreview=new URLSearchParams(location.search).get('npc-preview')==='001';
 let npcDraftWarning='';const npcDraftsReady=npcPreview?import('../data/npcs/customer-001.dialogues.json').then(m=>installNpcDrafts(m.default)).catch(()=>{npcDraftWarning='草稿未加载；仍可验证取货、货位调整与营业。';}):Promise.resolve();
 const training=new URLSearchParams(location.search).get('training')==='1';
-const sessionKey=npcPreview?'puppy-mart.npc001-preview.v1':training?'puppy-mart.training-session.v1':SESSION_KEY;
+const sessionKey=npcPreview?'puppy-mart.npc001-preview.v1':training?'puppy-mart.training-session.v1':adSandbox?'puppy-mart.ad-test-session.v1':SESSION_KEY;
 const storedSession=loadSession(sessionKey);
 let s=restoreSession(storedSession.value);s.narrative.allowDrafts=npcPreview;scene.shop=s;
 let hasSession=false;try{hasSession=localStorage.getItem(sessionKey)!==null&&storedSession.writable;}catch{}
 if(npcPreview){s.npcPreview=true;if(!hasSession){s.business.data.day=2;s.shelves={milk:6,bread:6,rice:0};}}
-const tutorial=new Tutorial(npcPreview?'puppy-mart.npc001-tutorial-preview.v1':training?'puppy-mart.tutorial-replay.v1':undefined,hasSession);
+const tutorial=new Tutorial(npcPreview?'puppy-mart.npc001-tutorial-preview.v1':training?'puppy-mart.tutorial-replay.v1':adSandbox?'puppy-mart.ad-test-tutorial.v1':undefined,hasSession);
 if(npcPreview)tutorial.skip();
 let todoTab:TodoTab='open',todoPage=0;
 let notebookPage=0;let selectedGoods:Goods='milk';
 function saveProgress(){if(entered){if(!writeStore(sessionKey,snapshot(s),storedSession.writable)&&storedSession.writable)saveNotice='当前浏览器无法保存进度，请勿关闭页面。';tutorial.save();}}
+let adMessage='';
+function commitRewardAccount(expected:RewardAccount,next:RewardAccount){
+  if(!entered||!storedSession.writable||expected.day!==s.business.data.day||expected.balance!==s.business.data.balance||JSON.stringify(expected.ledger)!==JSON.stringify(s.adRewards))return false;
+  try{const raw=localStorage.getItem(sessionKey);if(raw){const saved=JSON.parse(raw);if((saved.adRewards?.revision??0)!==expected.ledger.revision||saved.business?.balance!==expected.balance||saved.business?.day!==expected.day)return false;}}
+  catch{return false;}
+  const candidate=structuredClone(snapshot(s));candidate.adRewards=structuredClone(next.ledger);candidate.business.balance=next.balance;
+  if(!writeStore(sessionKey,candidate,storedSession.writable))return false;
+  s.adRewards=structuredClone(next.ledger);s.business.data.balance=next.balance;return true;
+ }
+let rewardedAds=new RewardedAdService(adConfig,advertisementEnvironment,new UnconfiguredTapTapProvider(advertisementEnvironment),{
+ read:()=>({ledger:s.adRewards,balance:s.business.data.balance,day:s.business.data.day}),
+ commit:commitRewardAccount
+});
+const adHarnessReady=developmentAdHarness?import('../ads/development-provider').then(({DevelopmentRewardedProvider})=>{const testConfig=structuredClone(adConfig);testConfig.enabled=true;testConfig.environments['taptap-test'].enabled=true;rewardedAds=new RewardedAdService(testConfig,'taptap-test',new DevelopmentRewardedProvider(),{read:()=>({ledger:s.adRewards,balance:s.business.data.balance,day:s.business.data.day}),commit:(expected,next)=>commitRewardAccount(expected,next)},Math.random,undefined,()=>{if(entered)render();});}):Promise.resolve();
+function atomicCouponPurchase(goods:Goods){const previous=structuredClone(snapshot(s));if(!s.purchaseWithCoupon(goods))return false;if(writeStore(sessionKey,snapshot(s),storedSession.writable))return true;s=restoreSession(previous);s.narrative.allowDrafts=npcPreview;s.npcPreview=npcPreview;scene.shop=s;saveNotice='当前进度暂时无法保存，优惠券未使用。';return false;}
 function nextDay(){s=s.nextDay()??s;scene.shop=s;s.message='新的一天：'+(s.business.level>=2?'饭团已解锁，去仓库采购并放到冰柜货位。':'补货后接待顾客，完成目标可积累经验。');dialog=null;scene.modal=false;paused=false;scene.paused=false;lastSignature='';saveProgress();render();}
 
 const game=new Phaser.Game({type:Phaser.AUTO,parent:'game',width:430,height:420,pixelArt:true,backgroundColor:'#efdfc2',scale:{mode:Phaser.Scale.RESIZE,autoCenter:Phaser.Scale.CENTER_BOTH},scene:[scene],audio:{noAudio:true}});
 const escape=(text:string)=>text.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]!)).replaceAll(String.fromCharCode(34),'&quot;').replaceAll(String.fromCharCode(39),'&#39;');
-let entered=false,managerName=npcPreview&&typeof s.preservedSessionFields.previewManagerName==='string'?normalizeName(s.preservedSessionFields.previewManagerName):loadName(),dialog:'warehouse'|'notebook'|'stock'|'inventory'|'tasks'|'closing'|'conversation'|'environment-event'|'todo-book'|null=null,lastSignature='',saveNotice='';
+let entered=false,managerName=isolatedProfile()&&typeof s.preservedSessionFields.previewManagerName==='string'?normalizeName(s.preservedSessionFields.previewManagerName):loadName(),dialog:'warehouse'|'notebook'|'stock'|'inventory'|'tasks'|'closing'|'conversation'|'environment-event'|'todo-book'|'ad-rewards'|null=null,lastSignature='',saveNotice='';
 let paused=false;let entering=false;
 let dialogueTimer=0,dialogueKey='',dialogueLetters=0,dialogueRevealed=false;
 let resetJoystick: () => void = () => {};
@@ -66,7 +89,7 @@ function render(){
  scene.guideTarget=tutorial.target(s);scene.highlightPlayer=tutorial.active&&tutorial.step===0;
  scene.modal=!!dialog||layout.open||s.closed;
  document.body.classList.toggle('sim-dialog-open',!!dialog||layout.open);
- const signature=JSON.stringify([s.nearby,s.canTalkHamster,s.warehouse,s.shelves,s.carrying,s.customerState,s.path.length===0,s.futureArrivals,s.insideCount,s.departedCount,s.basket,s.scanned,s.confirmed,s.cashReceived,s.change,s.coins,s.served,s.open,s.closed,Math.ceil(s.remaining),s.message,dialog,paused,tutorial.record,notebookPage,selectedGoods,s.business.data,s.narrative.data,s.improvements,todoTab,todoPage,s.feedbackRevision,sound.enabled,layout.open]);
+ const signature=JSON.stringify([s.nearby,s.canTalkHamster,s.warehouse,s.shelves,s.carrying,s.customerState,s.path.length===0,s.futureArrivals,s.insideCount,s.departedCount,s.basket,s.scanned,s.confirmed,s.cashReceived,s.change,s.coins,s.served,s.open,s.closed,Math.ceil(s.remaining),s.message,dialog,paused,tutorial.record,notebookPage,selectedGoods,s.business.data,s.narrative.data,s.adRewards,rewardedAds.busy,rewardedAds.state,adMessage,s.improvements,todoTab,todoPage,s.feedbackRevision,sound.enabled,layout.open]);
  if(s.feedbackRevision!==lastFeedback){lastFeedback=s.feedbackRevision;const toast=document.querySelector<HTMLElement>('#feedback-toast');clearTimeout(toastTimer);toast?.classList.remove('show');if(s.feedbackRevision>0){if(toast){toast.textContent=s.feedback;void toast.offsetWidth;toast.classList.add('show');toastTimer=window.setTimeout(()=>toast.classList.remove('show'),2800);}sound.play(s.feedback.startsWith('扫描')?'scan':'sale');if(s.feedback.includes('目标完成')||s.feedback.includes('升级'))microCelebrate();}}
  if(signature===lastSignature)return;lastSignature=signature;
  const action=contextAction();
@@ -76,6 +99,7 @@ function render(){
 function contextAction(){if(s.nearby?.startsWith('event:'))return s.nearbyEnvironmentEvent?.definition.interactionLabel??null;switch(s.nearby){case 'todo-book':return '查看待办';case 'notebook':return '阅读';case 'warehouse':return '拿货';case 'milk':return '补货';case 'bread':return s.canAdjustHamsterShelf&&s.carrying?.goods!=='bread'?'调整摆放位置':'补货';case 'freezer':return s.business.level>=2?'补货':null;case 'counter':return s.atRegister?'结账':null;case 'entrance':return null;default:return null;}}
 function heading(title:string){return `<div class="dialog-heading"><h2>${title}</h2><button data-do="dismiss">返回店铺</button></div>`;}
 function dialogContent(){
+ if(dialog==='ad-rewards')return renderAdPanel(rewardedAds,s.adRewards,advertisementEnvironment,adMessage);
  if(dialog==='todo-book')return renderTodoBook(s,todoTab,todoPage);
  if(dialog==='environment-event'){const event=s.nearbyEnvironmentEvent;if(!event)return `<section class="sim-dialog">${heading('场景互动')}<p>这个事件目前无法互动。</p></section>`;return `<section class="sim-dialog">${heading(event.definition.interactionLabel)}<p>可以现在帮忙，也可以稍后再来。</p><button class="primary wide" data-do="environment-interact">${escape(event.definition.interactionLabel)}</button><button data-do="dismiss">稍后再来</button>${event.definition.dialogueTrigger&&s.canHearEnvironmentDialogue?'<button data-do="shelf-dialogue">听它说（草稿试读）</button>':''}</section>`;}
 
@@ -91,14 +115,14 @@ function dialogContent(){
 
  const pauseNotice=paused?'<p role="status">游戏已暂停 <button data-do="pause">继续操作</button></p>':'';
  if(dialog==='stock')return `<section class="sim-dialog">${heading(goodsName(selectedGoods)+'货架')}<p>货架 ${s.shelves[selectedGoods]}/6 · 手持 ${s.carrying?goodsName(s.carrying.goods)+' ×'+s.carrying.quantity:'无'}</p><p>从仓库拿取对应货箱后才能补货。</p><button class="primary wide" data-do="restock">确认补货</button>${selectedGoods==='bread'&&!s.canAdjustHamsterShelf&&!s.improvements.facilities['lowered-bread-slot']?`<button data-do="observe-bread" ${s.shelves.bread<=0?'disabled title="货架有货后再观察"':''}>观察货位</button>`:''}${selectedGoods==='bread'&&s.canAdjustHamsterShelf?'<button data-do="adjust-shelf">调整摆放位置</button>':''}<p role="status">${escape(s.message)}</p></section>`;
- if(dialog==='inventory')return `<section class="sim-dialog">${heading('库存与手持货箱')}<p>手持：${s.carrying?goodsName(s.carrying.goods)+' ×'+s.carrying.quantity:'无'}</p>${s.business.unlocked.map(id=>`<p>${goodsName(id)}：仓库 ${s.warehouse[id]} · 货架 ${s.shelves[id]}/6</p>`).join('')}<p>拿货请前往仓库，补货请靠近对应货架。</p></section>`;
+ if(dialog==='inventory')return `<section class="sim-dialog">${heading('库存与手持货箱')}<p>${adInventory(s.adRewards)}</p><button data-do="ad-rewards">可选视频奖励</button><p>手持：${s.carrying?goodsName(s.carrying.goods)+' ×'+s.carrying.quantity:'无'}</p>${s.business.unlocked.map(id=>`<p>${goodsName(id)}：仓库 ${s.warehouse[id]} · 货架 ${s.shelves[id]}/6</p>`).join('')}<p>拿货请前往仓库，补货请靠近对应货架。</p></section>`;
  if(dialog==='tasks')return `<section class="sim-dialog">${heading('今日目标')}<button data-do="todo-book">小狗的待办事项</button><p>店铺 Lv.${s.business.level} · ${s.business.data.xp} XP${s.business.nextLevel?' / '+s.business.nextLevel.xp:''}</p>${goalList(s).replace('<details','<details open')}<p>客流：${s.served} 单 · ${escape(s.message)}</p><p>使用顶部独立按钮开店或打烊；打烊需等待计划客流全部离店。</p></section>`;
  if(dialog==='closing')return `<section class="sim-dialog">${heading('结束今天的营业？')}<p>已完成 ${s.served} 单，销售额 ${s.coins}。打烊后查看成本、利润与明日目标。</p><button class="primary wide" data-do="close-day">打烊结算</button></section>`;
- if(dialog==='warehouse')return `<section class="sim-dialog" aria-label="仓库取货">${heading('仓库 · 每箱 3 件')}${pauseNotice}<div class="sim-actions">${s.business.unlocked.map(id=>`<button data-do="select-${id}" aria-pressed="${id===selectedGoods}">${goodsName(id)}</button>`).join('')}</div><p>${goodsName(selectedGoods)} · 仓库 ${s.warehouse[selectedGoods]} 件 · 资金 ${s.business.data.balance}</p><p>进价 ${s.business.cost(selectedGoods)} / 售价 ${products.find(p=>p.id===selectedGoods)!.price}</p><div class="sim-actions"><button data-do="take-${selectedGoods}">取${goodsName(selectedGoods)}箱</button><button data-do="buy-${selectedGoods}">采购一箱 · ${s.business.cost(selectedGoods)*3}</button><button data-do="return">放回货箱</button></div><p role="status">${escape(s.message)}</p></section>`;
+ if(dialog==='warehouse')return `<section class="sim-dialog" aria-label="仓库取货">${heading('仓库 · 每箱 3 件')}${pauseNotice}<div class="sim-actions">${s.business.unlocked.map(id=>`<button data-do="select-${id}" aria-pressed="${id===selectedGoods}">${goodsName(id)}</button>`).join('')}</div><p>${goodsName(selectedGoods)} · 仓库 ${s.warehouse[selectedGoods]} 件 · 资金 ${s.business.data.balance}</p><p>进价 ${s.business.cost(selectedGoods)} / 售价 ${products.find(p=>p.id===selectedGoods)!.price}</p><div class="sim-actions"><button data-do="take-${selectedGoods}">取${goodsName(selectedGoods)}箱</button><button data-do="buy-${selectedGoods}">采购一箱 · ${s.couponOffer(selectedGoods)?s.couponOffer(selectedGoods)!.net+'（用券）':s.business.cost(selectedGoods)*3}</button>${s.couponOffer(selectedGoods)?`<button data-do="buy-full-price-${selectedGoods}" ${s.business.data.balance<s.business.cost(selectedGoods)*3?'disabled':''}>保留优惠券 · 原价 ${s.business.cost(selectedGoods)*3}</button>`:''}<button data-do="return">放回货箱</button></div><p role="status">${escape(s.message)}</p></section>`;
  return '';
 }
 function interact(){
- if(!entered||paused||dialog||layout.open||s.closed)return;
+ if(!entered||paused||dialog||layout.open||s.closed||rewardedAds.busy)return;
  // Do not reset Phaser's E key while its keydown is being dispatched.
  if(s.nearby?.startsWith('event:')){dialog='environment-event';}
  else if(s.nearby==='todo-book'){s.syncImprovements();dialog='todo-book';todoTab='open';todoPage=0;}
@@ -116,17 +140,17 @@ function interact(){
  saveProgress();render();
 }
 scene.onRefresh=render;scene.onInteract=interact;
-document.addEventListener('keydown',e=>{if(e.key==='Escape'&&dialog&&!layout.open){e.preventDefault();if(dialog==='conversation')s.narrative.skip();dismissDialog();saveProgress();render();}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&dialog&&!layout.open&&!rewardedAds.busy){e.preventDefault();if(dialog==='conversation')s.narrative.skip();dismissDialog();saveProgress();render();}});
 panel.addEventListener('pointerdown',e=>{if((e.target as HTMLElement).closest('[data-do="interact"]')){e.preventDefault();interact();}});
 panel.addEventListener('click',async e=>{
- const action=(e.target as HTMLElement).closest<HTMLButtonElement>('button')?.dataset.do;if(!action)return;if(action==='interact'&&e.detail>0)return;
+ const action=(e.target as HTMLElement).closest<HTMLButtonElement>('button')?.dataset.do;if(!action||rewardedAds.busy)return;if(action==='interact'&&e.detail>0)return;
  resetMovement();
  if(action==='enter'){
-  if(entered||entering)return;entering=true;await npcDraftsReady;entering=false;
+  if(entered||entering)return;entering=true;await Promise.all([npcDraftsReady,adHarnessReady]);entering=false;
   const input=panel.querySelector<HTMLInputElement>('#manager-name')!;managerName=normalizeName(input.value);
   if(!layout.preferences.selected){layout.show('choice');return;}
   if(!managerName){input.setCustomValidity('请先给店长取名。');input.reportValidity();return;}
-  saveNotice=npcDraftWarning||storedSession.warning||tutorial.warning||((npcPreview||saveName(managerName))?'':'名字暂时无法保存；当前仍可游玩。');if(npcPreview)s.preservedSessionFields.previewManagerName=managerName;entered=true;document.querySelector('#app')!.classList.add('playing');document.body.classList.add('immersive');scene.activePlay=true;setupJoystick();
+  saveNotice=npcDraftWarning||storedSession.warning||tutorial.warning||((isolatedProfile()||saveName(managerName))?'':'名字暂时无法保存；当前仍可游玩。');if(isolatedProfile())s.preservedSessionFields.previewManagerName=managerName;entered=true;document.querySelector('#app')!.classList.add('playing');document.body.classList.add('immersive');scene.activePlay=true;setupJoystick();saveProgress();rewardedAds.recover();
  }else if(action==='restart'){nextDay();return;}
  else if(action==='pause'){paused=!paused;scene.paused=paused;}
  else if(action==='dialogue-skip'){s.narrative.skip();dismissDialog();}
@@ -136,6 +160,9 @@ panel.addEventListener('click',async e=>{
  else if(action==='skip-tutorial'){tutorial.skip();s.message='已跳过教程。随时打开员工须知，或选择重新学习。';}
  else if(action==='replay'){const replay=new Tutorial('puppy-mart.tutorial-replay.v1');writeStore(replay.key,{version:1,step:0,status:'active'},replay.writable);const old=loadSession('puppy-mart.training-session.v1');writeStore('puppy-mart.training-session.v1',snapshot(new ShopSimulation()),old.writable);location.href='?training=1';return;}
  else if(action==='settings'){layout.show();}
+ else if(action==='ad-rewards'){adMessage='';dialog='ad-rewards';}
+ else if(action.startsWith('watch-ad-')){const id=action.slice(9) as RewardId;if(adConfig.rewards.some(r=>r.id===id)){saveProgress();const previouslyPaused=paused;const pending=rewardedAds.watch(id);render();try{adMessage=adResultText[await pending];}finally{if(!document.hidden){paused=previouslyPaused;scene.paused=paused;}resetMovement();}}}
+ else if(action.startsWith('buy-full-price-')){const id=action.slice(15) as Goods;if(s.business.unlocked.includes(id))s.purchaseBox(id);}
  else if(action==='todo-book'){s.syncImprovements();dialog='todo-book';todoTab='open';todoPage=0;}
  else if(action.startsWith('todo-tab-')){const tab=action.slice(9);if(['open','completed','future'].includes(tab)){todoTab=tab as TodoTab;todoPage=0;}}
  else if(action==='todo-prev')todoPage=Math.max(0,todoPage-1);
@@ -158,7 +185,7 @@ panel.addEventListener('click',async e=>{
  else if(action==='business'){if(s.open){if(s.canClose)dialog='closing';}else if(!tutorial.active||tutorial.step>=4){s.tutorialDay=tutorial.active;s.shoppingList=tutorial.active?['milk']:s.business.unlocked;s.startDay();}}
  else if(action==='interact'){interact();return;}
  else if(action.startsWith('take-')){const id=action.slice(5) as Goods;if(s.business.unlocked.includes(id)&&s.takeBox(id)){tutorial.observe(s,'take');dismissDialog();}}
- else if(action.startsWith('buy-')){const id=action.slice(4) as Goods;if(s.business.unlocked.includes(id))s.purchaseBox(id);}
+ else if(action.startsWith('buy-')){const id=action.slice(4) as Goods;if(s.business.unlocked.includes(id)){if(s.couponOffer(id))atomicCouponPurchase(id);else s.purchaseBox(id);}}
  else if(action==='return')s.returnBox();
  else if(action==='close-day'){if(s.canClose){s.closeDay();dismissDialog();}}
  saveProgress();render();

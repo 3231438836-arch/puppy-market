@@ -1,0 +1,8 @@
+import defaults from '../data/ad-rewards.json' with {type:'json'};
+export type AdEnvironment='web'|'taptap-test'|'taptap-production';
+export type RewardId='coupon'|'materials'|'coins';
+export interface RewardDefinition {id:RewardId;enabled:boolean;visible:boolean;kind:RewardId;label:string;amount:number;couponSubsidy:number;dailyLimit:number;pool:{id:string;label:string;weight:number}[]}
+export interface AdConfig {enabled:boolean;dailyLimit:number;timeoutMs:number;environments:Record<AdEnvironment,{enabled:boolean;placements:Record<RewardId,string|null>}>;rewards:RewardDefinition[]}
+export const adConfig=defaults as AdConfig;
+export function adEnvironment(value:unknown):AdEnvironment{return value==='taptap-test'||value==='taptap-production'?value:'web';}
+export function validAdConfig(v:AdConfig){try{const n=(x:number)=>Number.isSafeInteger(x)&&x>0&&x<=10000;return typeof v.enabled==='boolean'&&n(v.dailyLimit)&&v.timeoutMs>=1000&&v.timeoutMs<=300000&&new Set(v.rewards.map(r=>r.id)).size===v.rewards.length&&v.rewards.every(r=>['coupon','materials','coins'].includes(r.id)&&r.kind===r.id&&typeof r.enabled==='boolean'&&typeof r.visible==='boolean'&&n(r.amount)&&n(r.dailyLimit)&&(r.kind!=='coupon'||n(r.couponSubsidy))&&(r.kind!=='materials'||r.pool.length>0&&new Set(r.pool.map(p=>p.id)).size===r.pool.length&&r.pool.every(p=>['wood','cloth','paint'].includes(p.id)&&n(p.weight))))&&(['web','taptap-test','taptap-production'] as const).every(e=>v.environments[e]&&typeof v.environments[e].enabled==='boolean'&&['coupon','materials','coins'].every(id=>{const p=v.environments[e].placements[id as RewardId];return p===null||typeof p==='string'&&p.trim().length>0;}));}catch{return false;}}
