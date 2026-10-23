@@ -1,0 +1,15 @@
+import {beforeEach,afterEach,describe,it,expect,vi} from 'vitest';
+import {Tutorial,TUTORIAL_KEY} from '../src/simulation/tutorial';
+import {ShopSimulation,center,fixtures} from '../src/simulation/world';
+import {snapshot,restoreSession,validSession,readStore,writeStore,SESSION_KEY} from '../src/simulation/persistence';
+let memory:Map<string,string>;
+beforeEach(()=>{memory=new Map();vi.stubGlobal('localStorage',{getItem:(k:string)=>memory.get(k)??null,setItem:(k:string,v:string)=>memory.set(k,v)});});
+afterEach(()=>vi.unstubAllGlobals());
+describe('教程与独立记录',()=>{
+ it('不能通过阅读翻页或无对应操作事件直接推进',()=>{const t=new Tutorial(),s=new ShopSimulation();expect(t.observe(s,'review')).toBe(false);expect(t.observe(s,'notebook')).toBe(false);s.player=center(7,16);t.observe(s);expect(t.step).toBe(1);t.observe(s,'notebook');expect(t.step).toBe(1);s.player=center(7,12);t.observe(s,'notebook');expect(t.step).toBe(2);expect(t.observe(s,'take')).toBe(false);});
+ it('取箱中断后保留货箱、库存和教程步骤，能继续补货',()=>{const s=new ShopSimulation();s.player={...fixtures[0].spot};s.takeBox('milk');const t=new Tutorial();t.record.step=2;t.observe(s,'take');expect(t.step).toBe(3);writeStore(SESSION_KEY,snapshot(s));const restored=restoreSession(JSON.parse(memory.get(SESSION_KEY)!));const reloaded=new Tutorial();expect(reloaded.step).toBe(3);expect(restored.carrying).toEqual({goods:'milk',quantity:3});restored.player={...fixtures.find(f=>f.id==='milk')!.spot};restored.restock('milk');reloaded.observe(restored,'restock');expect(reloaded.step).toBe(4);expect(restored.warehouse.milk).toBe(3);});
+ it('跳过、完成和复习使用独立记录，旧存档保持原值',()=>{memory.set('old-game','keep');const t=new Tutorial();t.skip();expect(new Tutorial().record.status).toBe('skipped');const replay=new Tutorial('replay');replay.save();expect(new Tutorial().record.status).toBe('skipped');expect(memory.get('old-game')).toBe('keep');expect(memory.get(TUTORIAL_KEY)).not.toBe(memory.get('replay'));});
+ it('无营业现场时活动教程安全回到起点，已完成不重置',()=>{const t=new Tutorial();t.record.step=3;t.save();expect(new Tutorial(TUTORIAL_KEY,false).step).toBe(0);t.record={version:1,step:8,status:'completed'};t.save();expect(new Tutorial(TUTORIAL_KEY,false).record.status).toBe('completed');});
+ it('新记录可写，未知版本、损坏记录保留而不覆盖',()=>{expect(readStore('new',()=>snapshot(new ShopSimulation()),validSession).writable).toBe(true);memory.set(SESSION_KEY,'{"version":99}');const loaded=readStore(SESSION_KEY,()=>snapshot(new ShopSimulation()),validSession);expect(loaded.writable).toBe(false);writeStore(SESSION_KEY,loaded.value,loaded.writable);expect(memory.get(SESSION_KEY)).toBe('{"version":99}');memory.set(SESSION_KEY,'broken');expect(readStore(SESSION_KEY,()=>snapshot(new ShopSimulation()),validSession).writable).toBe(false);expect(memory.get(SESSION_KEY)).toBe('broken');});
+ it('营业现场校验阻止负库存、穿墙位置和错误收银阶段',()=>{const good=snapshot(new ShopSimulation());expect(validSession(good)).toBe(true);expect(validSession({...good,shelves:{milk:-1,bread:0}})).toBe(false);expect(validSession({...good,player:center(4,6)})).toBe(false);expect(validSession({...good,cashReceived:true})).toBe(false);});
+});

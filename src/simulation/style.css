@@ -8,3 +8,20 @@ body.sim-dialog-open{overflow:hidden}
 .dialog-heading h2{font-size:16px;margin:0;flex:1}
 .dialog-heading button{flex-shrink:0;padding:10px;background:#557f7b;color:#fff8e8;font-size:13px;font-weight:bold}
 body.sim-dialog-open .movement-dock{visibility:hidden;pointer-events:none}
+/* P1 phone targets keep their physical size even on short screens. */
+.movement-dock{padding-inline:18px;gap:16px;touch-action:none}
+.joystick{width:120px;height:120px;min-width:120px;min-height:120px}
+.interact-pad{width:78px;height:78px;min-width:78px;flex-shrink:0;font-size:14px;padding:5px;touch-action:none}
+.sim-actions button,.sim-dialog button,#controls>button{min-width:44px;min-height:44px;font-size:14px}
+.tutorial-card{background:#fff0c9;border:2px solid #bd8a51;border-radius:8px;padding:9px 12px;margin:9px 0;box-shadow:3px 3px #ddc599}
+.tutorial-card b{font-size:14px}.tutorial-card p{margin:5px 0;font-size:13px}.tutorial-card button{min-height:44px;background:#7a6049;color:#fff4db;padding:8px 12px}
+.notebook{background:#f3e4bf!important;border:4px double #6f5137!important;border-radius:3px!important}
+.notebook .dialog-heading{background:#f3e4bf}.notebook-page{padding:6px 3px;animation:page-in .18s ease-out}.notebook-page p{font-size:16px;line-height:1.9}.notebook-page h2{font-size:20px;margin:14px 0}.hand-note{border-left:3px solid #a77655;padding-left:10px;color:#775238}.notebook-page small{font-size:12px;color:#816441}
+@keyframes page-in{from{opacity:.3;transform:translateX(6px)}to{opacity:1;transform:translateX(0)}}
+@media(prefers-reduced-motion:reduce){.notebook-page{animation:none}}
+#app.playing{height:100dvh;min-height:0;display:flex;flex-direction:column;overflow:hidden;padding-bottom:0}
+#app.playing header{flex-shrink:0}
+#app.playing #game{flex:1;aspect-ratio:auto;min-height:160px;max-height:none}
+#app.playing #controls{flex-shrink:0;max-height:38dvh;overflow-y:auto;overscroll-behavior:contain}
+#app.playing .movement-dock{position:relative;flex-shrink:0;bottom:auto}
+#app.playing footer{display:none}

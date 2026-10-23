@@ -2,7 +2,10 @@ import Phaser from 'phaser';
 import { fixtures, ShopSimulation, TILE, WIDTH, HEIGHT } from './world';
 import style from '../data/store-style.json';
 export class SimulationScene extends Phaser.Scene {
-  readonly shop = new ShopSimulation();
+  shop = new ShopSimulation();
+  guideTarget: {x:number;y:number}|null=null;
+  highlightPlayer=false;
+  private guide!: Phaser.GameObjects.Graphics;
   activePlay = false;
   paused = false;
   modal = false;
@@ -52,6 +55,9 @@ export class SimulationScene extends Phaser.Scene {
       this.label(x+w/2,y+h+10,f.label);
       zones.lineStyle(1,0x7f9e8c,.7).strokeCircle(f.spot.x,f.spot.y,12);
     }
+    const book=this.add.graphics().setDepth(450);book.fillStyle(0x70523d).fillRect(258,420,18,14).fillStyle(0xe9d7ad).fillRect(260,421,14,10).fillStyle(0x9b7353).fillRect(267,421,1,10);
+    this.label(240,386,'员工须知', '#70523d');
+    this.guide=this.add.graphics().setDepth(1500);
     this.stockGraphics=this.add.graphics().setDepth(400);
     this.customerSprite=this.add.image(this.shop.customer.x,this.shop.customer.y,'customer-down-0').setOrigin(.5,.85).setVisible(false);
     this.heldBox=this.add.image(0,0,'crate').setVisible(false);
@@ -123,6 +129,11 @@ export class SimulationScene extends Phaser.Scene {
         this.stockGraphics.fillStyle(goods==='milk'?0xe8efe4:0xd7a66e).fillRect(x,y,16,20).fillStyle(goods==='milk'?0x729b9d:0x986f47).fillRect(x+3,y+8,10,5);
       }
       this.stockLabels[goods]?.setText(`${goods==='milk'?'牛奶':'面包'} ${s.shelves[goods]}/${s.capacity}`);
+    }
+    this.guide.clear();
+    if(this.guideTarget){const p=this.guideTarget;const pulse=matchMedia('(prefers-reduced-motion: reduce)').matches?1:.8+Math.sin(time/230)*.2;
+      this.guide.lineStyle(3,0xc96e43,pulse).strokeCircle(p.x,p.y,20);this.guide.fillStyle(0xb75a36,pulse).fillRect(p.x-3,p.y-43,6,14).fillTriangle(p.x-8,p.y-30,p.x+8,p.y-30,p.x,p.y-22);
+      if(this.highlightPlayer)this.guide.lineStyle(2,0xffffe5).strokeRect(s.player.x-17,s.player.y-35,34,39);
     }
     const el=document.querySelector<HTMLElement>('#game')!;
     el.dataset.playerX=String(s.player.x);el.dataset.playerY=String(s.player.y);

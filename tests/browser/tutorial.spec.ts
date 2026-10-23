@@ -1,0 +1,27 @@
+import {test,expect} from '@playwright/test';
+import {walk,position} from './helpers';
+import {center} from '../../src/simulation/world';
+test('新存档教程真实操作、笔记分页、中途恢复到货箱、首日与自由经营',async({page})=>{
+ test.setTimeout(100000);await page.goto('/');await page.getByLabel('给吉娃娃店长取个名字').fill('栗');await page.getByRole('button',{name:'进入便利店 →'}).click();
+ await expect(page.getByRole('complementary',{name:'新手引导'})).toContainText('01');
+ await page.getByRole('button',{name:'员工须知',exact:true}).click();await page.getByRole('button',{name:'下一页'}).click();await page.getByRole('button',{name:'返回店铺'}).click();await expect(page.getByRole('complementary',{name:'新手引导'})).toContainText('01');
+ await walk(page,center(7,16));await expect(page.getByRole('complementary',{name:'新手引导'})).toContainText('02');
+ await walk(page,center(7,12));await page.getByRole('button',{name:'互动：员工须知 · E',exact:true}).click();await expect(page.getByRole('region',{name:'员工须知'})).toContainText('移动与互动');await page.getByRole('button',{name:'返回店铺'}).click();
+ await walk(page,center(2,4));await page.getByRole('button',{name:'互动：仓库 · E',exact:true}).click();await page.getByRole('button',{name:'取牛奶箱'}).click();await page.getByRole('button',{name:'返回店铺'}).click();await expect(page.getByRole('complementary',{name:'新手引导'})).toContainText('04');
+ await page.reload();await page.getByRole('button',{name:'进入便利店 →'}).click();await expect(page.getByTestId('stock')).toContainText('牛奶 ×3');await expect(page.getByRole('complementary',{name:'新手引导'})).toContainText('04');
+ await walk(page,center(4,9));
+ const pad=await page.locator('.joystick').boundingBox(),action=await page.getByRole('button',{name:'就近互动',exact:true}).boundingBox();const touch=await page.context().newCDPSession(page);
+ const first={id:1,x:pad!.x+pad!.width/2+25,y:pad!.y+pad!.height/2};const second={id:2,x:action!.x+action!.width/2,y:action!.y+action!.height/2};
+ await touch.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[first]});const before=await position(page);
+ await touch.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[first,second]});await touch.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[first]});await page.waitForTimeout(200);
+ expect((await position(page)).x).toBeGreaterThan(before.x+5);await touch.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+ await expect(page.getByTestId('stock')).toContainText('牛奶 3/6');await page.getByRole('button',{name:'开店',exact:true}).click();await walk(page,center(9,12));await expect(page.getByTestId('customer-status')).toHaveText('顾客等待结账',{timeout:15000});
+ await page.getByRole('button',{name:'互动：收银台 · E',exact:true}).click();await page.getByRole('button',{name:'扫描下一件'}).click();await page.getByRole('button',{name:'确认总价'}).click();await page.getByRole('button',{name:'收现金 20'}).click();
+ await page.getByRole('button',{name:'+5',exact:true}).click();await page.getByRole('button',{name:'+5',exact:true}).click();await page.getByRole('button',{name:'+2',exact:true}).click();await page.getByRole('button',{name:'交付找零，完成交易'}).click();
+ await expect(page.getByTestId('customer-status')).toHaveText('顾客已离店',{timeout:15000});await page.getByRole('button',{name:'打烊结算'}).click();await page.getByRole('button',{name:'完成教程，开始自由经营'}).click();
+ await expect(page.getByRole('complementary',{name:'新手引导'})).toHaveCount(0);expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('puppy-mart.tutorial.v1')!).status)).toBe('completed');await page.screenshot({path:'test-results/p1-first-batch.png',fullPage:true});
+});
+test('跳过持久化、手册随时可读、复习不覆盖正式营业',async({page})=>{
+ await page.goto('/');await page.getByLabel('给吉娃娃店长取个名字').fill('栗');await page.getByRole('button',{name:'进入便利店 →'}).click();await page.getByRole('button',{name:'跳过教程'}).click();await page.reload();await page.getByRole('button',{name:'进入便利店 →'}).click();await expect(page.getByRole('button',{name:'跳过教程'})).toHaveCount(0);
+ await page.getByRole('button',{name:'员工须知',exact:true}).click();await expect(page.getByRole('region',{name:'员工须知'})).toBeVisible();await page.getByRole('button',{name:'返回店铺'}).click();const prior=await page.evaluate(()=>localStorage.getItem('puppy-mart.shop-session.v1'));await page.getByRole('button',{name:'重新学习',exact:true}).click();await page.getByRole('button',{name:'进入便利店 →'}).click();await expect(page.getByRole('button',{name:'跳过教程'})).toBeVisible();expect(await page.evaluate(()=>localStorage.getItem('puppy-mart.shop-session.v1'))).toBe(prior);
+});

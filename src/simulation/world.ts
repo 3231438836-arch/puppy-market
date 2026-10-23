@@ -11,7 +11,8 @@ export const fixtures = [
   { id: 'stairs', x: 9, y: 1, w: 2, h: 2, label: '员工宿舍 ↑', spot: center(9, 3) },
   { id: 'counter', x: 8, y: 13, w: 3, h: 1, label: '收银台', spot: center(9, 12) },
 ] as const;
-export type FixtureId = typeof fixtures[number]['id'];
+export type FixtureId = typeof fixtures[number]['id'] | 'notebook';
+export const NOTEBOOK_SPOT=center(7,12);
 export function blocked(x: number, y: number) {
   return x < 1 || y < 1 || x >= WIDTH - 1 || y >= HEIGHT - 1 || fixtures.some(f => x >= f.x && x < f.x + f.w && y >= f.y && y < f.y + f.h);
 }
@@ -55,6 +56,7 @@ export class ShopSimulation {
   customerState: CustomerState = 'outside';
   path: Point[] = [];
   shoppingIndex = 0;
+  shoppingList: Goods[] = ['milk','bread'];
   warehouse: Record<Goods, number> = { milk: 6, bread: 6 };
   shelves: Record<Goods, number> = { milk: 0, bread: 0 };
   readonly capacity = 6;
@@ -73,7 +75,7 @@ export class ShopSimulation {
   get total() { return this.basket.reduce((sum, id) => sum + products.find(p => p.id === id)!.price, 0); }
   get tender() { return 20; }
   get changeDue() { return this.tender - this.total; }
-  get nearby() { return fixtures.find(f => Math.hypot(this.player.x - f.spot.x, this.player.y - f.spot.y) <= 45)?.id ?? null; }
+  get nearby() { if(Math.hypot(this.player.x-NOTEBOOK_SPOT.x,this.player.y-NOTEBOOK_SPOT.y)<=30)return 'notebook';return fixtures.find(f => Math.hypot(this.player.x - f.spot.x, this.player.y - f.spot.y) <= 45)?.id ?? null; }
   movePlayer(x: number, y: number, seconds: number) {
     if (this.closed) return;
     const length = Math.hypot(x, y);
@@ -105,7 +107,7 @@ export class ShopSimulation {
     this.message = `补货完成 +${amount}，库存 ${this.shelves[goods]}/${this.capacity}。`; return true;
   }
   private routeToShelf() {
-    const goods = (['milk', 'bread'] as const)[this.shoppingIndex];
+    const goods = this.shoppingList[this.shoppingIndex];
     this.path = findPath(this.customer, fixtures.find(f => f.id === goods)!.spot);
   }
   tick(seconds: number) {
@@ -120,10 +122,10 @@ export class ShopSimulation {
     }
     if (this.path.length) return;
     if (this.customerState === 'shopping' || this.customerState === 'waiting-stock') {
-      const goods = (['milk', 'bread'] as const)[this.shoppingIndex];
+      const goods = this.shoppingList[this.shoppingIndex];
       if (!this.shelves[goods]) { this.customerState = 'waiting-stock'; return; }
       this.shelves[goods]--; this.basket.push(goods); this.shoppingIndex++;
-      if (this.shoppingIndex < 2) { this.customerState = 'shopping'; this.routeToShelf(); }
+      if (this.shoppingIndex < this.shoppingList.length) { this.customerState = 'shopping'; this.routeToShelf(); }
       else { this.customerState = 'queueing'; this.path = findPath(this.customer, center(9, 14)); }
     } else if (this.customerState === 'leaving') { this.customerState = 'gone'; this.message = '顾客已离店，完整经营体验完成！可以继续练习补货或打烊。'; }
   }
