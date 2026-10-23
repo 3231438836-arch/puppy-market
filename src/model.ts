@@ -1,4 +1,4 @@
-import products from './data/products.json';
+import products from './data/products.json' with { type: 'json' };
 export { products };
 export type ProductId = string;
 export const DAY_SECONDS = 120;

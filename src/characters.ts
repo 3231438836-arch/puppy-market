@@ -22,6 +22,13 @@ export function loadName(): string {
   } catch { return ''; }
 }
 export function saveName(name: string): boolean {
-  try { localStorage.setItem(PLAYER_PROFILE_KEY, JSON.stringify({ version: 1, preferredName: normalizeName(name) })); return true; }
+  try {
+    const raw = localStorage.getItem(PLAYER_PROFILE_KEY);
+    const previous = raw === null ? { version: 1 } : JSON.parse(raw);
+    // Preserve unknown/newer or damaged records for future migrations; never reset them.
+    if (!previous || Array.isArray(previous) || previous.version !== 1) return false;
+    localStorage.setItem(PLAYER_PROFILE_KEY, JSON.stringify({ ...previous, preferredName: normalizeName(name) }));
+    return true;
+  }
   catch { return false; }
 }

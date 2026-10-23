@@ -1,7 +1,7 @@
 import {test,expect} from '@playwright/test';
 test('手机完整营业循环、失误、暂停与重开',async({page})=>{
  const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
- await page.clock.install();await page.goto('/');
+ await page.clock.install();await page.goto('/?mode=classic');
  await expect(page.locator('canvas')).toBeVisible();
  await page.getByLabel('给吉娃娃店长取个名字').fill('小栗');await page.getByRole('button',{name:/开始第 1 天/}).click();
  const items=(await page.getByTestId('order').getAttribute('data-items'))!.split(',');
@@ -21,9 +21,9 @@ test('手机完整营业循环、失误、暂停与重开',async({page})=>{
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);expect(errors).toEqual([]);
  await page.screenshot({path:'test-results/store-mobile.png',fullPage:true});
 });
-test('320px 窄屏操作可用',async({page})=>{await page.setViewportSize({width:320,height:640});await page.goto('/');await page.getByLabel('给吉娃娃店长取个名字').fill('小栗');await page.getByRole('button',{name:/开始第 1 天/}).click();await expect(page.getByRole('button',{name:'结账 ✓'})).toBeVisible();expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);});
+test('320px 窄屏操作可用',async({page})=>{await page.setViewportSize({width:320,height:640});await page.goto('/?mode=classic');await page.getByLabel('给吉娃娃店长取个名字').fill('小栗');await page.getByRole('button',{name:/开始第 1 天/}).click();await expect(page.getByRole('button',{name:'结账 ✓'})).toBeVisible();expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);});
 test('自选名字本机恢复、转义与旧数据保留',async({page})=>{
- await page.goto('/');
+ await page.goto('/?mode=classic');
  await page.evaluate(()=>localStorage.setItem('existing-game-save','keep-me'));
  await page.getByLabel('给吉娃娃店长取个名字').fill('<b>栗</b>');
  await page.getByRole('button',{name:/开始第 1 天/}).click();
