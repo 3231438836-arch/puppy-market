@@ -1,3 +1,4 @@
+import type {NarrativeContent} from '../author/content';
 import config from '../data/narrative-test.json' with {type:'json'};
 import type {CharacterData} from '../characters';
 import type {Goods} from './world';
@@ -10,15 +11,16 @@ const dialogues=config.dialogues as Record<string,Record<string,Node>>;
 const labels:Record<string,string>={listen:'先听对方说',brief:'保持简短',later:'这次先结账'};
 export class Narrative {
  data:NarrativeRecord;
- constructor(data?:NarrativeRecord){this.data=data?structuredClone(data):{version:1,profiles:{},active:null};}
- private profile(id:string){if(id!==config.customer.customerId)return null;return this.data.profiles[id]??= {...config.customer,id,shoppingPreferences:config.customer.shoppingPreferences as Goods[],visitCount:0,dialogueFlags:{},eventFlags:{},relationshipState:{},lastVisitDay:0};}
+ constructor(data?:NarrativeRecord,readonly content:NarrativeContent=config as NarrativeContent){this.data=data?structuredClone(data):{version:1,profiles:{},active:null};}
+ private choiceLabel(value:string){for(const nodes of Object.values(this.content.dialogues))for(const node of Object.values(nodes)){const choice=node.choices?.find(c=>c.value===value);if(choice)return choice.label;}return labels[value]??'未选择';}
+ private profile(id:string){if(id!==this.content.customer.customerId)return null;return this.data.profiles[id]??= {...this.content.customer,id,shoppingPreferences:this.content.customer.shoppingPreferences as Goods[],visitCount:0,dialogueFlags:{},eventFlags:{},relationshipState:{},lastVisitDay:0};}
  visit(id:string,day:number){const p=this.profile(id);if(p){p.visitCount++;p.lastVisitDay=day;}}
- pending(id:string,day:number){const p=this.profile(id);if(!p)return null;return config.events.find(e=>e.customerId===id&&p.visitCount>=e.minVisits&&(!('maxVisits' in e)||p.visitCount<=e.maxVisits!)&&day>=e.minDay&&(!('requires' in e)||p.eventFlags[e.requires!])&&(e.repeatable||!p.dialogueFlags[e.eventId]))??null;}
+ pending(id:string,day:number){const p=this.profile(id);if(!p)return null;return this.content.events.find(e=>e.customerId===id&&p.visitCount>=e.minVisits&&(!('maxVisits' in e)||p.visitCount<=e.maxVisits!)&&day>=e.minDay&&(!('requires' in e)||p.eventFlags[e.requires!])&&(e.repeatable||!p.dialogueFlags[e.eventId]))??null;}
  begin(id:string,visitorId:string,day:number){if(this.data.active)return false;const event=this.pending(id,day);if(!event)return false;this.data.active={eventId:event.eventId,visitorId,nodeId:event.entry};return true;}
- get event(){return config.events.find(e=>e.eventId===this.data.active?.eventId);}
- get current(){const event=this.event,active=this.data.active;if(!event||!active)return null;const node=dialogues[event.dialogueRef][active.nodeId];const profile=this.profile(event.customerId)!;return{...node,text:node.text.replaceAll('{previousChoice}',labels[profile.relationshipState.reply]??'未选择'),displayName:profile.displayName,portraitId:profile.portraitId,choices:node.choices??[]};}
+ get event(){return this.content.events.find(e=>e.eventId===this.data.active?.eventId);}
+ get current(){const event=this.event,active=this.data.active;if(!event||!active)return null;const node=this.content.dialogues[event.dialogueRef][active.nodeId];const profile=this.profile(event.customerId)!;return{...node,text:node.text.replaceAll('{previousChoice}',this.choiceLabel(profile.relationshipState.reply)),displayName:profile.preferredName||profile.displayName,portraitId:profile.portraitId,choices:node.choices??[]};}
  choose(index:number){const node=this.current,active=this.data.active,event=this.event,choice=node?.choices[index];if(!choice||!active||!event)return false;const p=this.profile(event.customerId)!;p.relationshipState.reply=choice.value;p.eventFlags[choice.flag]=true;active.nodeId=choice.next;return true;}
- continue(){const node=this.current;if(!node||node.choices.length)return false;const event=this.event!,active=this.data.active!;const next=dialogues[event.dialogueRef][active.nodeId].next;if(next){active.nodeId=next;return true;}return this.finish(false);}
+ continue(){const node=this.current;if(!node||node.choices.length)return false;const event=this.event!,active=this.data.active!;const next=this.content.dialogues[event.dialogueRef][active.nodeId].next;if(next){active.nodeId=next;return true;}return this.finish(false);}
  skip(){return this.finish(true);}
  private finish(skipped:boolean){const event=this.event;if(!event)return false;const p=this.profile(event.customerId)!;p.dialogueFlags[event.eventId]=true;p.eventFlags[event.resultFlag]=true;if(skipped)p.eventFlags[event.eventId+'-skipped']=true;this.data.active=null;return true;}
 }
