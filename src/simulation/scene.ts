@@ -91,7 +91,7 @@ export class SimulationScene extends Phaser.Scene {
     this.guide=this.add.graphics().setDepth(1500);
     this.stockLabels.rice=this.add.text(416,49,'饭团 0/6',{fontSize:'11px',color:'#493a32',backgroundColor:'#fff5df'}).setOrigin(.5).setDepth(1000);
     this.stockGraphics=this.add.graphics().setDepth(400);
-    for(const label of Object.values(this.stockLabels))label.setInteractive({useHandCursor:true}).on('pointerdown',()=>{if(this.activePlay&&!this.modal&&!this.paused)this.onStockWarning();});
+    for(const label of Object.values(this.stockLabels))label.setInteractive({useHandCursor:true}).on('pointerdown',(pointer:Phaser.Input.Pointer)=>{const target=pointer.event?.target;if(target instanceof Element&&target.closest('#controls,#layout-modal'))return;if(this.activePlay&&!this.modal&&!this.paused)this.onStockWarning();});
 
     this.heldBox=this.add.image(0,0,'crate').setVisible(false);
     this.playerSprite=this.add.image(this.shop.player.x,this.shop.player.y,'dog-down-0').setOrigin(.5,.85);

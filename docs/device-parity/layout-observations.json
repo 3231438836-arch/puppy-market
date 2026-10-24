@@ -1,0 +1,54 @@
+[
+  {
+    "viewport": {
+      "width": 1280,
+      "height": 900
+    },
+    "scrollHeight": 944,
+    "clientHeight": 872,
+    "forecastText": "店铺 Level 2累计 18 XP · 下一等级还需 32 XP明日可期待：柜台小花盆达到 Level 3 后解锁；是否明天解锁取决于经营经验。已开放商品：牛奶、面包、饭团已解锁饭团：去仓库采购，再到冰柜货位补货。",
+    "initiallyVisible": true,
+    "forecastTop": 594,
+    "panelBottom": 888,
+    "bodyScroll": false
+  },
+  {
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "scrollHeight": 961,
+    "clientHeight": 816,
+    "forecastText": "店铺 Level 2累计 18 XP · 下一等级还需 32 XP明日可期待：柜台小花盆达到 Level 3 后解锁；是否明天解锁取决于经营经验。已开放商品：牛奶、面包、饭团已解锁饭团：去仓库采购，再到冰柜货位补货。",
+    "initiallyVisible": true,
+    "forecastTop": 610.5,
+    "panelBottom": 832,
+    "bodyScroll": false
+  },
+  {
+    "viewport": {
+      "width": 844,
+      "height": 390
+    },
+    "scrollHeight": 944,
+    "clientHeight": 362,
+    "forecastText": "店铺 Level 2累计 18 XP · 下一等级还需 32 XP明日可期待：柜台小花盆达到 Level 3 后解锁；是否明天解锁取决于经营经验。已开放商品：牛奶、面包、饭团已解锁饭团：去仓库采购，再到冰柜货位补货。",
+    "initiallyVisible": false,
+    "forecastTop": 594,
+    "panelBottom": 378,
+    "bodyScroll": false
+  },
+  {
+    "viewport": {
+      "width": 320,
+      "height": 568
+    },
+    "scrollHeight": 1058,
+    "clientHeight": 540,
+    "forecastText": "店铺 Level 2累计 18 XP · 下一等级还需 32 XP明日可期待：柜台小花盆达到 Level 3 后解锁；是否明天解锁取决于经营经验。已开放商品：牛奶、面包、饭团已解锁饭团：去仓库采购，再到冰柜货位补货。",
+    "initiallyVisible": false,
+    "forecastTop": 625,
+    "panelBottom": 556,
+    "bodyScroll": false
+  }
+]

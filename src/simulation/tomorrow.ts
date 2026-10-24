@@ -1,0 +1,6 @@
+import type {ShopSimulation} from './world';
+import products from '../data/products.json' with {type:'json'};
+/** Shared, read-only forecast. No random events or undiscovered NPC identities. */
+export function tomorrowPreview(s:ShopSimulation){const next=s.business.nextLevel;return{day:s.business.data.day+1,level:s.business.level,xp:s.business.data.xp,next:next?{level:next.level,remaining:Math.max(0,next.xp-s.business.data.xp),label:next.unlock}:null,goods:s.business.unlocked.map(id=>products.find(p=>p.id===id)!.name)};}
+export function forecastCard(s:ShopSimulation){const p=tomorrowPreview(s);return `<div class="level-card forecast-card" aria-label="经营解锁预告"><b>店铺 Level ${p.level}</b><p>累计 ${p.xp} XP${p.next?' · 下一等级还需 '+p.next.remaining+' XP':' · 已达到本阶段最高等级'}</p><p>明日可期待：${p.next?p.next.label:'继续补货与接待，经营自己的节奏。'}</p>${p.next?`<p>达到 Level ${p.next.level} 后解锁；是否明天解锁取决于经营经验。</p>`:'<p>当前阶段的经营内容均已解锁。</p>'}<p>已开放商品：${p.goods.join('、')}</p>${p.level>=2?'<p>已解锁饭团：去仓库采购，再到冰柜货位补货。</p>':''}</div>`;}
+export function renderTomorrow(s:ShopSimulation){return `<section class="sim-dialog tomorrow-panel" aria-label="明日预告"><div class="dialog-heading"><h2>明日预告 · 第 ${s.business.data.day+1} 天</h2><button data-do="dismiss">返回店铺</button></div>${forecastCard(s)}<p>这里根据当前经营进度显示已配置的解锁内容，不预告未相遇顾客的身份或剧情。</p></section>`;}

@@ -1,0 +1,21 @@
+{
+  "viewport": {
+    "width": 1280,
+    "height": 900,
+    "touch": false
+  },
+  "forecast": "same level 2 / 18XP / 32 remaining / flower pot",
+  "entries": [
+    "forecast",
+    "guest book",
+    "approved manual",
+    "diary archive",
+    "physical dorm",
+    "catalog",
+    "layout",
+    "version check"
+  ],
+  "businessPreserved": true,
+  "diaryPreserved": true,
+  "pageErrors": []
+}

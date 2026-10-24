@@ -1,0 +1,54 @@
+[
+  {
+    "viewport": {
+      "width": 1280,
+      "height": 900
+    },
+    "scrollHeight": 831,
+    "clientHeight": 831,
+    "forecastText": "店铺 Level 2累计 18 XP · 下一等级还需 32 XP明日可期待：柜台小花盆已解锁饭团：去仓库采购，再到冰柜货位补货。",
+    "initiallyVisible": true,
+    "forecastTop": 614.5,
+    "panelBottom": 867.5,
+    "bodyScroll": false
+  },
+  {
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "scrollHeight": 848,
+    "clientHeight": 816,
+    "forecastText": "店铺 Level 2累计 18 XP · 下一等级还需 32 XP明日可期待：柜台小花盆已解锁饭团：去仓库采购，再到冰柜货位补货。",
+    "initiallyVisible": true,
+    "forecastTop": 610.5,
+    "panelBottom": 832,
+    "bodyScroll": false
+  },
+  {
+    "viewport": {
+      "width": 844,
+      "height": 390
+    },
+    "scrollHeight": 831,
+    "clientHeight": 362,
+    "forecastText": "店铺 Level 2累计 18 XP · 下一等级还需 32 XP明日可期待：柜台小花盆已解锁饭团：去仓库采购，再到冰柜货位补货。",
+    "initiallyVisible": false,
+    "forecastTop": 594,
+    "panelBottom": 378,
+    "bodyScroll": false
+  },
+  {
+    "viewport": {
+      "width": 320,
+      "height": 568
+    },
+    "scrollHeight": 926,
+    "clientHeight": 540,
+    "forecastText": "店铺 Level 2累计 18 XP · 下一等级还需 32 XP明日可期待：柜台小花盆已解锁饭团：去仓库采购，再到冰柜货位补货。",
+    "initiallyVisible": false,
+    "forecastTop": 625,
+    "panelBottom": 556,
+    "bodyScroll": false
+  }
+]

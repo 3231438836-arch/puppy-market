@@ -1,0 +1,18 @@
+[
+  {
+    "url": "https://puppy-market.3231438836.workers.dev/version.json",
+    "error": "<urlopen error Tunnel connection failed: 403 Forbidden>"
+  },
+  {
+    "url": "https://puppy-market.3231438836.workers.dev/",
+    "error": "<urlopen error Tunnel connection failed: 403 Forbidden>"
+  },
+  {
+    "url": "https://3231438836-arch.github.io/puppy-market/version.json",
+    "error": "<urlopen error Tunnel connection failed: 403 Forbidden>"
+  },
+  {
+    "url": "https://3231438836-arch.github.io/puppy-market/?v=3",
+    "error": "<urlopen error Tunnel connection failed: 403 Forbidden>"
+  }
+]
