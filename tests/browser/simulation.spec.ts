@@ -1,5 +1,7 @@
+import {ShopSimulation} from '../../src/simulation/world';import {snapshot} from '../../src/simulation/persistence';
+import {skipOpening} from './helpers';
 import {test,expect,type Page} from '@playwright/test';import {walk,position} from './helpers';import {center,fixtures} from '../../src/simulation/world';
-async function enter(page:Page){await page.goto('/');await page.getByLabel('给吉娃娃店长取个名字').fill('栗');await page.getByRole('button',{name:'进入便利店 →'}).click();await page.getByRole('button',{name:'跳过',exact:true}).click();}
+async function enter(page:Page){const s=new ShopSimulation();s.flow.plan=Array.from({length:4},(_,i)=>({id:`fixed-${i}`,at:i*12,arrived:false,customerId:i===0?'test-regular':'ordinary'}));await page.addInitScript(data=>{if(!localStorage.getItem('puppy-mart.shop-session.v1'))localStorage.setItem('puppy-mart.shop-session.v1',JSON.stringify(data));},snapshot(s));await page.goto('/');await page.getByLabel('给吉娃娃店长取个名字').fill('栗');await page.getByRole('button',{name:'进入便利店 →'}).click();await skipOpening(page);await page.getByRole('button',{name:'跳过',exact:true}).click();}
 async function at(page:Page,x:number,y:number,action:string){await walk(page,center(x,y));await page.getByRole('button',{name:action,exact:true}).click();}
 test.beforeEach(async({page})=>{await page.addInitScript(()=>{if(!localStorage.getItem('puppy-mart.layout.v1'))localStorage.setItem('puppy-mart.layout.v1',JSON.stringify({version:1,selected:true,preferred:'portrait',joystickSize:120,buttonSize:78,joystickInset:18}));});});
 test('四位自动到店、真实排队、一键结账、刷新后不重复、全部离店入口打烊',async({page})=>{
@@ -7,7 +9,7 @@ test('四位自动到店、真实排队、一键结账、刷新后不重复、�
  for(const [name,x] of [['牛奶',4],['面包',10]] as const)for(let i=0;i<2;i++){await at(page,2,4,'拿货');await page.getByRole('button',{name,exact:true}).click();await page.getByRole('button',{name:'取'+name+'箱'}).click();await at(page,x,9,'补货');await page.getByRole('button',{name:'确认补货'}).click();}
  await at(page,7,18,'开店');await expect(page.getByLabel('每日客流')).toContainText('待到 3');await walk(page,fixtures.find(f=>f.id==='counter')!.spot);
  await expect(page.getByRole('button',{name:'结账',exact:true})).toBeVisible({timeout:25000});await expect.poll(async()=>page.evaluate(()=>JSON.parse(localStorage.getItem('puppy-mart.shop-session.v1')!).flow.queue.length),{timeout:45000}).toBe(3);await page.screenshot({path:'test-results/v4.1-queue-portrait.png'});await page.keyboard.press('e');await page.getByRole('button',{name:'跳过对话'}).click();await page.keyboard.press('e');await expect(page.locator('.compact-hud')).toContainText('◈ 81');
- await page.reload();await page.getByRole('button',{name:'进入便利店 →'}).click();
+ await page.reload();await page.getByRole('button',{name:'进入便利店 →'}).click();await skipOpening(page);
  for(let i=0;i<3;i++){await expect(page.getByRole('button',{name:'结账',exact:true})).toBeVisible({timeout:30000});await page.getByRole('button',{name:'结账',exact:true}).click();}
  await expect(page.getByLabel('每日客流')).toHaveText('待到 0 · 店内 0 · 离店 4',{timeout:15000});await page.screenshot({path:'test-results/v4.1-flow-portrait.png'});await at(page,7,18,'打烊');await page.getByRole('button',{name:'打烊结算'}).click();await expect(page.locator('.ledger')).toContainText('今日销售额 56');await expect(page.locator('.ledger')).toContainText('今日经营利润 28');expect(errors).toEqual([]);
 });

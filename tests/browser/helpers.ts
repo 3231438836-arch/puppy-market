@@ -19,3 +19,5 @@ export async function walk(page:Page,target:Point){
   }
  }
 }
+/** Existing gameplay cases explicitly skip the newly added first-run opening. Dedicated opening tests read it. */
+export async function skipOpening(page:Page){const button=page.getByRole('button',{name:'跳过开场',exact:true});if(await button.isVisible())await button.click();}

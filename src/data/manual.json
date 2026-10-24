@@ -1,0 +1,195 @@
+{
+  "version": 1,
+  "title": "员工须知",
+  "status": "approved",
+  "discoveryLines": [
+    "咦？床上怎么有本书？",
+    "……《员工须知》？",
+    "放在这里的啊。"
+  ],
+  "pages": [
+    {
+      "id": "page-01",
+      "title": "扉页",
+      "text": "员工须知\n请放在收银台下面的第二层抽屉里。\n欢迎来到本店。\n如果你正在阅读这本手册，说明你大概已经找到收银台了。\n这很好。\n接下来，请先检查灯、冰柜和收银机是否正常工作。\n如果都没有问题，就可以开始营业。\n其他事情，慢慢来。",
+      "annotations": [
+        {
+          "label": "铅笔批注",
+          "text": "「冰柜有时候会响，不是坏了。拍一下右边就好。」",
+          "style": "pencil"
+        },
+        {
+          "label": "另一种歪歪扭扭的字",
+          "text": "「别拍太重。我上次把冰棍震下来了。」",
+          "style": "crooked"
+        }
+      ],
+      "decoration": null
+    },
+    {
+      "id": "page-02",
+      "title": "开门之前",
+      "text": "请确认门口的营业牌已经翻到正确的一面。\n如果昨天忘了翻回来，也没有关系。镇上的居民一般会自己推门看看。",
+      "annotations": [
+        {
+          "label": "手写补充",
+          "text": "「但有一只鸭子不会。它会一直站在外面等。」",
+          "style": "ink"
+        }
+      ],
+      "decoration": null
+    },
+    {
+      "id": "page-03",
+      "title": "关于货架",
+      "text": "请尽量把商品摆放整齐。\n重的放下面，轻的放上面。\n如果有客人拿不到商品，请主动帮忙。",
+      "annotations": [
+        {
+          "label": "旧批注",
+          "text": "「其实应该直接把架子换矮一点。」",
+          "style": "old"
+        },
+        {
+          "label": "更浅的一行",
+          "text": "「申请过了。没回音。」",
+          "style": "faded"
+        }
+      ],
+      "decoration": null
+    },
+    {
+      "id": "page-04",
+      "title": "收银台",
+      "text": "收银台下面有一张小凳子。\n原本是用来垫脚的，但现在其中一条腿有些松动。\n请不要站在上面。",
+      "annotations": [
+        {
+          "label": "手写补充",
+          "text": "「拿去修了。应该星期四回来。」",
+          "style": "ink"
+        },
+        {
+          "label": "另一行",
+          "text": "「哪个星期四？」",
+          "style": "crooked"
+        }
+      ],
+      "decoration": null
+    },
+    {
+      "id": "page-05",
+      "title": "如果店里没有客人",
+      "text": "可以整理货架、擦拭玻璃，或者检查快要过期的食品。\n如果这些都做完了，也可以坐一会儿。",
+      "annotations": [
+        {
+          "label": "手写补充",
+          "text": "「坐一会儿不算偷懒。」",
+          "style": "ink"
+        },
+        {
+          "label": "另一行",
+          "text": "「这句是谁写的？谢谢。」",
+          "style": "pencil"
+        }
+      ],
+      "decoration": null
+    },
+    {
+      "id": "page-06",
+      "title": "关于熟客",
+      "text": "有些客人喜欢聊天，有些客人只想安静地买完东西。\n请尽量记住他们的习惯。\n不必每次都问他们是不是要买和上次一样的东西。",
+      "annotations": [
+        {
+          "label": "手写补充",
+          "text": "「尤其不要当着别的客人问。」",
+          "style": "ink"
+        }
+      ],
+      "decoration": null
+    },
+    {
+      "id": "page-07",
+      "title": "雨天",
+      "text": "下雨时，请把门口的纸箱搬进来。\n门口的地垫容易积水，记得晾干。",
+      "annotations": [
+        {
+          "label": "手写补充",
+          "text": "「伞可以暂时放在门边。别把别人的伞当成没人要的东西。」",
+          "style": "ink"
+        }
+      ],
+      "decoration": "页面下方画着三把不同形状的小伞，其中一把被圈了起来。"
+    },
+    {
+      "id": "page-08",
+      "title": "打烊以后",
+      "text": "请检查收银机里的钱是否与当日账目一致。\n关掉不需要的灯。\n确认冰柜仍在通电。\n最后，锁好店门。",
+      "annotations": [
+        {
+          "label": "手写补充",
+          "text": "「如果很累，地明天再拖也行。」",
+          "style": "ink"
+        }
+      ],
+      "decoration": null
+    },
+    {
+      "id": "page-09",
+      "title": "关于钥匙",
+      "text": "店门钥匙请随身携带。\n如果忘记带钥匙，可以检查后门旁边的旧花盆。",
+      "annotations": [
+        {
+          "label": "一行被划掉的字",
+          "text": "「备用钥匙放在……」",
+          "style": "struck"
+        },
+        {
+          "label": "另一行",
+          "text": "「别再把备用钥匙的位置写在员工手册上了！！」",
+          "style": "crooked"
+        }
+      ],
+      "decoration": null
+    },
+    {
+      "id": "page-10",
+      "title": "留给下一位店员",
+      "text": "如果你发现手册里有什么不对的地方，可以直接修改。\n如果有新的经验，也可以写在空白处。\n不必把前面的字擦掉。",
+      "annotations": [
+        {
+          "label": "手写补充",
+          "text": "「反正这本也没剩几页了。」",
+          "style": "ink"
+        },
+        {
+          "label": "另一种字迹",
+          "text": "「那就再订一本。」",
+          "style": "crooked"
+        },
+        {
+          "label": "很淡的一行",
+          "text": "「新的放在哪里？」",
+          "style": "faded"
+        }
+      ],
+      "decoration": null
+    }
+  ],
+  "inserts": [
+    {
+      "id": "unsigned-insert",
+      "title": "无署名夹页",
+      "unlockFlag": "manual_unsigned_insert_author_event",
+      "text": "今天有人问我，在这里工作久了，会不会觉得无聊。\n我想了想。\n其实每天做的事情确实差不多。\n早上开门，晚上关门。\n把卖掉的东西补上。\n记住谁喜欢什么，谁总是忘记带零钱。\n偶尔也会有一点新鲜事。\n比如今天，门口的花终于开了。\n我之前一直以为那是一盆草。",
+      "decoration": "页面右下角有一道很浅的水渍。没有署名。"
+    }
+  ],
+  "progressNotes": [
+    {
+      "id": "lower-shelf-fixed",
+      "pageId": "page-03",
+      "condition": "bread-accessible",
+      "text": "「换好了。原来也没有那么难嘛。」",
+      "style": "manager"
+    }
+  ]
+}

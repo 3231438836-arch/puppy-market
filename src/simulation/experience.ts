@@ -1,0 +1,12 @@
+import type {ShopSimulation,Point,Goods} from './world';
+export interface Experience {version:1;introStarted?:boolean;previousOrder?:string[];introSeen:boolean;room:'shop'|'dorm';dormPosition:Point;appearanceHistory:string[]}
+export const freshExperience=():Experience=>({version:1,introSeen:false,room:'shop',dormPosition:{x:256,y:512},appearanceHistory:[]});
+export const dormFurniture=[{id:'bed',x:64,y:96,w:112,h:160,label:'床铺'},{id:'desk',x:320,y:96,w:112,h:64,label:'书桌'},{id:'shelf',x:352,y:256,w:80,h:64,label:'置物架'}];
+export const DORM_EXIT={x:256,y:560};
+export function dormCanStand(p:Point){return p.x>=41&&p.x<=471&&p.y>=73&&p.y<=587&&!dormFurniture.some(f=>p.x+9>f.x&&p.x-9<f.x+f.w&&p.y+9>f.y&&p.y-9<f.y+f.h);}
+export function moveDorm(p:Point,x:number,y:number,seconds:number){const length=Math.max(1,Math.hypot(x,y)),dx=x/length*112*seconds,dy=y/length*112*seconds,next={...p},steps=Math.max(1,Math.ceil(Math.max(Math.abs(dx),Math.abs(dy))/4));for(let i=0;i<steps;i++){if(dormCanStand({x:next.x+dx/steps,y:next.y}))next.x+=dx/steps;if(dormCanStand({x:next.x,y:next.y+dy/steps}))next.y+=dy/steps;}return next;}
+export function dormTarget(p:Point){if(Math.hypot(p.x-DORM_EXIT.x,p.y-DORM_EXIT.y)<50)return 'exit';return dormFurniture.find(f=>Math.hypot(p.x-(f.x+f.w/2),p.y-(f.y+f.h+20))<50)?.id??null;}
+export function validExperience(v:unknown):v is Experience{if(!v||typeof v!=='object')return false;const e=v as Experience;return e.version===1&&typeof e.introSeen==='boolean'&&['shop','dorm'].includes(e.room)&&!!e.dormPosition&&Number.isFinite(e.dormPosition.x)&&Number.isFinite(e.dormPosition.y)&&dormCanStand(e.dormPosition)&&(e.introStarted===undefined||typeof e.introStarted==='boolean')&&(e.previousOrder===undefined||Array.isArray(e.previousOrder)&&e.previousOrder.length<=50&&e.previousOrder.every(id=>typeof id==='string'))&&Array.isArray(e.appearanceHistory)&&e.appearanceHistory.length<=18&&e.appearanceHistory.every(id=>typeof id==='string'&&id.length<=80);}
+export function stockWarnings(s:ShopSimulation):{goods:Goods;level:'empty'|'low'}[]{return s.business.unlocked.filter(id=>s.shelves[id]<=2).map(goods=>({goods,level:s.shelves[goods]===0?'empty':'low'}));}
+/** Small simulation steps preserve path/queue/event transitions at 2x; player and UI use wall time. */
+export function advanceSimulation(s:ShopSimulation,seconds:number,speed:1|2){let remaining=Math.max(0,Math.min(seconds,.05))*speed;while(remaining>1e-8){const step=Math.min(.025,remaining);s.tick(step);remaining-=step;}}

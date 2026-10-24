@@ -10,8 +10,12 @@ export function appearanceFor(visitor:Pick<Visitor,'id'|'customerId'|'appearance
  return appearanceById(visitor.appearanceId)??customerAppearances[hash%customerAppearances.length];
 }
 export function chooseAppearance(recent:(string|undefined)[],random=Math.random){
- const pool=customerAppearances.filter(a=>!recent.includes(a.id));const choices=pool.length?pool:customerAppearances;
- return choices[Math.min(choices.length-1,Math.floor(Math.max(0,random())*choices.length))].id;
+ // Prefer the least recently represented species, then unused combinations.
+ const counts=new Map<string,number>();for(const a of customerAppearances)counts.set(a.species,0);
+ for(const id of recent){const a=appearanceById(id);if(a)counts.set(a.species,(counts.get(a.species)??0)+1);}
+ const minimum=Math.min(...counts.values());const balanced=customerAppearances.filter(a=>counts.get(a.species)===minimum);
+ const unused=balanced.filter(a=>!recent.includes(a.id));const choices=unused.length?unused:balanced;
+ return choices[Math.min(choices.length-1,Math.floor(Math.max(0,Math.min(.999999,random()))*choices.length))].id;
 }
 export function visitorRadius(v:Pick<Visitor,'id'|'customerId'|'appearanceId'>){return appearanceFor(v)?.collisionRadius??9;}
 export function visitorInteractionRange(v:Pick<Visitor,'id'|'customerId'|'appearanceId'>){return appearanceFor(v)?.interactionRange??56;}

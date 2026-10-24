@@ -1,0 +1,5 @@
+[
+ {"customerId":"CUSTOMER_001","id":"high-shelf-request","eventId":"customer001-high-shelf","label":"在面包货位前够不到上面的商品。","requiresFlag":"customer001_first_shelf_event_seen"},
+ {"customerId":"CUSTOMER_001","id":"temporary-help","eventId":"customer001-high-shelf-helped","label":"已经帮它拿取商品；临时帮助不等于长期改造。","requiresFlag":"customer001_first_shelf_helped"},
+ {"customerId":"CUSTOMER_001","id":"noticed-low-shelf","eventId":"customer001-noticed-low-shelf","label":"再次到访时，它亲眼注意到矮货架，并表示现在可以自行取货。","requiresFlag":"customer001_noticed_low_shelf"}
+]

@@ -1,0 +1,481 @@
+{
+  "note": "Deterministic diagnostic run; real simulation with generous stock fixture, not production seed/weather.",
+  "hamsterDays": [
+    8
+  ],
+  "days": [
+    {
+      "day": 1,
+      "weekday": 1,
+      "count": 5,
+      "visitors": [
+        {
+          "order": 1,
+          "customerId": "ordinary",
+          "species": "duck",
+          "appearance": "duck-brown",
+          "arrivalSeconds": 0,
+          "shopping": [
+            "milk"
+          ]
+        },
+        {
+          "order": 2,
+          "customerId": "ordinary",
+          "species": "small-dog",
+          "appearance": "small-dog-brown",
+          "arrivalSeconds": 10.74,
+          "shopping": [
+            "bread"
+          ]
+        },
+        {
+          "order": 3,
+          "customerId": "ordinary",
+          "species": "hedgehog",
+          "appearance": "hedgehog-ash",
+          "arrivalSeconds": 22.25,
+          "shopping": [
+            "milk",
+            "milk",
+            "bread"
+          ]
+        },
+        {
+          "order": 4,
+          "customerId": "ordinary",
+          "species": "cat",
+          "appearance": "cat-calico",
+          "arrivalSeconds": 37.1,
+          "shopping": [
+            "bread"
+          ]
+        },
+        {
+          "order": 5,
+          "customerId": "ordinary",
+          "species": "rabbit",
+          "appearance": "rabbit-spotted",
+          "arrivalSeconds": 51.42,
+          "shopping": [
+            "milk",
+            "bread",
+            "milk"
+          ]
+        }
+      ]
+    },
+    {
+      "day": 2,
+      "weekday": 2,
+      "count": 3,
+      "visitors": [
+        {
+          "order": 1,
+          "customerId": "ordinary",
+          "species": "squirrel",
+          "appearance": "squirrel-dark",
+          "arrivalSeconds": 0,
+          "shopping": [
+            "milk",
+            "milk"
+          ]
+        },
+        {
+          "order": 2,
+          "customerId": "ordinary",
+          "species": "small-dog",
+          "appearance": "small-dog-patch",
+          "arrivalSeconds": 26.15,
+          "shopping": [
+            "bread",
+            "bread"
+          ]
+        },
+        {
+          "order": 3,
+          "customerId": "ordinary",
+          "species": "duck",
+          "appearance": "duck-ivory",
+          "arrivalSeconds": 34.79,
+          "shopping": [
+            "bread"
+          ]
+        }
+      ]
+    },
+    {
+      "day": 3,
+      "weekday": 3,
+      "count": 3,
+      "visitors": [
+        {
+          "order": 1,
+          "customerId": "ordinary",
+          "species": "squirrel",
+          "appearance": "squirrel-grey",
+          "arrivalSeconds": 0,
+          "shopping": [
+            "bread",
+            "bread"
+          ]
+        },
+        {
+          "order": 2,
+          "customerId": "ordinary",
+          "species": "hedgehog",
+          "appearance": "hedgehog-chestnut",
+          "arrivalSeconds": 24.09,
+          "shopping": [
+            "bread"
+          ]
+        },
+        {
+          "order": 3,
+          "customerId": "ordinary",
+          "species": "rabbit",
+          "appearance": "rabbit-cream",
+          "arrivalSeconds": 32.78,
+          "shopping": [
+            "milk",
+            "milk"
+          ]
+        }
+      ]
+    },
+    {
+      "day": 4,
+      "weekday": 4,
+      "count": 4,
+      "visitors": [
+        {
+          "order": 1,
+          "customerId": "ordinary",
+          "species": "cat",
+          "appearance": "cat-ginger",
+          "arrivalSeconds": 0,
+          "shopping": [
+            "bread",
+            "bread"
+          ]
+        },
+        {
+          "order": 2,
+          "customerId": "ordinary",
+          "species": "rabbit",
+          "appearance": "rabbit-brown",
+          "arrivalSeconds": 18.65,
+          "shopping": [
+            "milk",
+            "bread"
+          ]
+        },
+        {
+          "order": 3,
+          "customerId": "ordinary",
+          "species": "small-dog",
+          "appearance": "small-dog-tan",
+          "arrivalSeconds": 25.59,
+          "shopping": [
+            "milk",
+            "milk"
+          ]
+        },
+        {
+          "order": 4,
+          "customerId": "ordinary",
+          "species": "squirrel",
+          "appearance": "squirrel-red",
+          "arrivalSeconds": 67.04,
+          "shopping": [
+            "milk"
+          ]
+        }
+      ]
+    },
+    {
+      "day": 5,
+      "weekday": 5,
+      "count": 3,
+      "visitors": [
+        {
+          "order": 1,
+          "customerId": "ordinary",
+          "species": "duck",
+          "appearance": "duck-mottled",
+          "arrivalSeconds": 0,
+          "shopping": [
+            "bread"
+          ]
+        },
+        {
+          "order": 2,
+          "customerId": "ordinary",
+          "species": "cat",
+          "appearance": "cat-grey",
+          "arrivalSeconds": 7.14,
+          "shopping": [
+            "bread",
+            "bread",
+            "bread"
+          ]
+        },
+        {
+          "order": 3,
+          "customerId": "ordinary",
+          "species": "hedgehog",
+          "appearance": "hedgehog-sand",
+          "arrivalSeconds": 12.25,
+          "shopping": [
+            "bread",
+            "milk",
+            "milk"
+          ]
+        }
+      ]
+    },
+    {
+      "day": 6,
+      "weekday": 6,
+      "count": 4,
+      "visitors": [
+        {
+          "order": 1,
+          "customerId": "ordinary",
+          "species": "small-dog",
+          "appearance": "small-dog-patch",
+          "arrivalSeconds": 0,
+          "shopping": [
+            "milk"
+          ]
+        },
+        {
+          "order": 2,
+          "customerId": "ordinary",
+          "species": "hedgehog",
+          "appearance": "hedgehog-chestnut",
+          "arrivalSeconds": 11.98,
+          "shopping": [
+            "milk",
+            "bread"
+          ]
+        },
+        {
+          "order": 3,
+          "customerId": "ordinary",
+          "species": "cat",
+          "appearance": "cat-calico",
+          "arrivalSeconds": 23.06,
+          "shopping": [
+            "bread"
+          ]
+        },
+        {
+          "order": 4,
+          "customerId": "ordinary",
+          "species": "duck",
+          "appearance": "duck-mottled",
+          "arrivalSeconds": 42.42,
+          "shopping": [
+            "milk",
+            "milk",
+            "bread"
+          ]
+        }
+      ]
+    },
+    {
+      "day": 7,
+      "weekday": 7,
+      "count": 5,
+      "visitors": [
+        {
+          "order": 1,
+          "customerId": "ordinary",
+          "species": "hedgehog",
+          "appearance": "hedgehog-ash",
+          "arrivalSeconds": 0,
+          "shopping": [
+            "bread",
+            "bread"
+          ]
+        },
+        {
+          "order": 2,
+          "customerId": "ordinary",
+          "species": "small-dog",
+          "appearance": "small-dog-brown",
+          "arrivalSeconds": 8.05,
+          "shopping": [
+            "milk",
+            "bread"
+          ]
+        },
+        {
+          "order": 3,
+          "customerId": "ordinary",
+          "species": "duck",
+          "appearance": "duck-brown",
+          "arrivalSeconds": 13.3,
+          "shopping": [
+            "milk",
+            "bread"
+          ]
+        },
+        {
+          "order": 4,
+          "customerId": "ordinary",
+          "species": "squirrel",
+          "appearance": "squirrel-red",
+          "arrivalSeconds": 19.33,
+          "shopping": [
+            "milk"
+          ]
+        },
+        {
+          "order": 5,
+          "customerId": "ordinary",
+          "species": "cat",
+          "appearance": "cat-grey",
+          "arrivalSeconds": 32.33,
+          "shopping": [
+            "bread",
+            "bread",
+            "milk"
+          ]
+        }
+      ]
+    },
+    {
+      "day": 8,
+      "weekday": 1,
+      "count": 4,
+      "visitors": [
+        {
+          "order": 1,
+          "customerId": "ordinary",
+          "species": "rabbit",
+          "appearance": "rabbit-spotted",
+          "arrivalSeconds": 0,
+          "shopping": [
+            "bread",
+            "bread"
+          ]
+        },
+        {
+          "order": 2,
+          "customerId": "CUSTOMER_001",
+          "species": "special",
+          "appearance": "fixed-special",
+          "arrivalSeconds": 21.42,
+          "shopping": [
+            "bread"
+          ]
+        },
+        {
+          "order": 3,
+          "customerId": "ordinary",
+          "species": "duck",
+          "appearance": "duck-ivory",
+          "arrivalSeconds": 25.94,
+          "shopping": [
+            "milk",
+            "bread"
+          ]
+        },
+        {
+          "order": 4,
+          "customerId": "ordinary",
+          "species": "squirrel",
+          "appearance": "squirrel-grey",
+          "arrivalSeconds": 47.26,
+          "shopping": [
+            "milk",
+            "milk"
+          ]
+        }
+      ]
+    },
+    {
+      "day": 9,
+      "weekday": 2,
+      "count": 3,
+      "visitors": [
+        {
+          "order": 1,
+          "customerId": "ordinary",
+          "species": "rabbit",
+          "appearance": "rabbit-cream",
+          "arrivalSeconds": 0,
+          "shopping": [
+            "bread"
+          ]
+        },
+        {
+          "order": 2,
+          "customerId": "test-regular",
+          "species": "special",
+          "appearance": "fixed-special",
+          "arrivalSeconds": 20.46,
+          "shopping": [
+            "milk",
+            "milk"
+          ]
+        },
+        {
+          "order": 3,
+          "customerId": "ordinary",
+          "species": "squirrel",
+          "appearance": "squirrel-dark",
+          "arrivalSeconds": 47.16,
+          "shopping": [
+            "milk",
+            "bread",
+            "bread"
+          ]
+        }
+      ]
+    },
+    {
+      "day": 10,
+      "weekday": 3,
+      "count": 3,
+      "visitors": [
+        {
+          "order": 1,
+          "customerId": "ordinary",
+          "species": "small-dog",
+          "appearance": "small-dog-tan",
+          "arrivalSeconds": 0,
+          "shopping": [
+            "bread",
+            "bread"
+          ]
+        },
+        {
+          "order": 2,
+          "customerId": "ordinary",
+          "species": "rabbit",
+          "appearance": "rabbit-brown",
+          "arrivalSeconds": 6.96,
+          "shopping": [
+            "milk",
+            "milk"
+          ]
+        },
+        {
+          "order": 3,
+          "customerId": "ordinary",
+          "species": "cat",
+          "appearance": "cat-ginger",
+          "arrivalSeconds": 21.27,
+          "shopping": [
+            "bread",
+            "milk",
+            "milk"
+          ]
+        }
+      ]
+    }
+  ]
+}

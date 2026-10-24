@@ -93,5 +93,49 @@
       "哎，不是说什么都没了，那个还有一点。",
       "反正先买着吧，省得过两天又跑一趟。"
     ]
+  },
+  {
+    "npcId": "CUSTOMER_001",
+    "dialogueId": "first-low-shelf-notice",
+    "category": "special",
+    "trigger": "chat",
+    "priority": 100,
+    "conditions": {
+      "minVisits": 2,
+      "flagsAll": [
+        "customer001_first_shelf_helped"
+      ],
+      "flagsNone": [
+        "customer001_noticed_low_shelf"
+      ],
+      "environment": {
+        "installedAll": [
+          "low-shelf"
+        ],
+        "reachableAll": [
+          "bread"
+        ],
+        "solvedAll": [
+          "customer001-high-shelf"
+        ],
+        "period": "day"
+      }
+    },
+    "effects": {
+      "eventFlags": {
+        "customer001_noticed_low_shelf": true
+      }
+    },
+    "weight": 1,
+    "cooldown": 0,
+    "once": true,
+    "status": "draft",
+    "enabled": true,
+    "lines": [
+      "欸？你们终于翻新啦？",
+      "还真是新官上任三把火呀。",
+      "哎，这个现在我自己就能够到了。",
+      "不错不错，早该这样了嘛。"
+    ]
   }
 ]

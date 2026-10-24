@@ -1,0 +1,10 @@
+[
+ {"id":"low-shelf","name":"矮木货架","price":18,"category":"business","unique":true,"weight":3,"description":"不是每位客人都长得一样高。","note":"放置到面包货位后，商品在较低处展示；原有免费调整方式仍然可用。","icon":"shelf"},
+ {"id":"lamp","name":"旧台灯","price":8,"category":"living","unique":false,"weight":3,"description":"灯罩有一道裂纹，但光还是很暖。","note":"可放在店内或宿舍的安全陈设位。","icon":"lamp"},
+ {"id":"plant","name":"不知名盆栽","price":7,"category":"odd","unique":false,"weight":3,"description":"前主人说，它不喜欢被人盯着看。","note":"普通环境陈设，不触发主线。","icon":"plant"},
+ {"id":"rug","name":"小地毯","price":6,"category":"living","unique":false,"weight":2,"description":"一块普通的小地毯。","note":"铺在宿舍指定区域，不影响行走。","icon":"rug"},
+ {"id":"chair","name":"小木椅","price":9,"category":"living","unique":false,"weight":2,"description":"可以放在宿舍窗边。","note":"固定陈设位，不占通道。","icon":"chair"},
+ {"id":"clock","name":"走慢的挂钟","price":11,"category":"odd","unique":true,"weight":2,"description":"据说它每天都会少走七分钟。","note":"说明文字不改变营业计时速度。","icon":"clock"},
+ {"id":"frame","name":"缺角的相框","price":10,"category":"odd","unique":true,"weight":2,"description":"里面没有照片。背面却写着一个日期。","note":"具体日期未配置，不推断人物或剧情。","icon":"frame"},
+ {"id":"radio","name":"旧收音机","price":14,"category":"living","unique":true,"weight":1,"description":"旋钮有点松。偶尔能收到很远的声音。","note":"当前只作为普通陈设；未配置广播文本。","icon":"radio"}
+]

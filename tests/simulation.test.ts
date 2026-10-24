@@ -1,13 +1,14 @@
 import {describe,it,expect} from 'vitest';
 import {ShopSimulation,center,fixtures,canStand,findPath,move,QUEUE_SPOTS} from '../src/simulation/world';
 import {snapshot,restoreSession,validSession} from '../src/simulation/persistence';
+const fixedPlan=()=>Array.from({length:4},(_,i)=>({id:`queue-fixture-${i}`,at:i*12,arrived:false,customerId:'ordinary'}));
 const at=(s:ShopSimulation,id:string)=>s.player={...fixtures.find(f=>f.id===id)!.spot};
-function stocked(tutorial=false){const s=new ShopSimulation();s.tutorialDay=tutorial;for(const id of ['milk','bread'] as const)for(let i=0;i<2;i++){at(s,'warehouse');s.takeBox(id);at(s,id);s.restock(id);}return s;}
+function stocked(tutorial=false){const s=new ShopSimulation();s.tutorialDay=tutorial;if(!tutorial)s.flow.plan=fixedPlan();for(const id of ['milk','bread'] as const)for(let i=0;i<2;i++){at(s,'warehouse');s.takeBox(id);at(s,id);s.restock(id);}return s;}
 function advance(s:ShopSimulation,condition:()=>boolean,limit=30000){for(let i=0;i<limit&&!condition();i++)s.tick(.05);expect(condition(),JSON.stringify(s.flow)).toBe(true);}
 describe('自动客流、一键结账与队列',()=>{
  it('地图碰撞与所有互动点寻路同步更新，店员和顾客分侧',()=>{expect(canStand(center(10,15))).toBe(false);expect(canStand(center(9,13))).toBe(true);expect(canStand(center(4,6))).toBe(false);expect(move(center(3,7),200,0).x).toBeLessThan(4*32-8);for(const f of fixtures)expect(findPath(center(7,18),f.spot).length).toBeGreaterThan(0);expect(QUEUE_SPOTS[0].y).toBeLessThan(fixtures.find(f=>f.id==='counter')!.spot.y);});
  it('整箱守恒、容量上限，必须靠近正确货架',()=>{const s=new ShopSimulation();expect(s.takeBox('milk')).toBe(false);at(s,'warehouse');s.takeBox('milk');at(s,'bread');expect(s.restock('milk')).toBe(false);at(s,'milk');expect(s.restock('milk')).toBe(true);expect(s.warehouse.milk+s.shelves.milk).toBe(6);at(s,'warehouse');s.takeBox('milk');at(s,'milk');s.restock('milk');expect(s.shelves.milk).toBe(6);});
- it('计划仅生成一次，到店而非结账减少待到人数；空架等待不丢失顾客',()=>{const s=new ShopSimulation();s.startDay();expect(s.futureArrivals).toBe(3);expect(s.insideCount).toBe(1);expect(s.served).toBe(0);s.startDay();expect(s.flow.plan).toHaveLength(4);advance(s,()=>s.flow.visitors[0].state==='waiting-stock');expect(s.closeDay()).toBe(false);expect(s.coins).toBe(0);});
+ it('计划仅生成一次，到店而非结账减少待到人数；空架等待不丢失顾客',()=>{const s=new ShopSimulation();s.flow.plan=fixedPlan();s.startDay();expect(s.futureArrivals).toBe(3);expect(s.insideCount).toBe(1);expect(s.served).toBe(0);s.startDay();expect(s.flow.plan).toHaveLength(4);advance(s,()=>s.flow.visitors[0].state==='waiting-stock');expect(s.closeDay()).toBe(false);expect(s.coins).toBe(0);});
  it('三人实际排队不重叠，离开柜台不丢订单，连续一键结账不重复收费，全部离店才打烊',()=>{
   const s=stocked();s.startDay();advance(s,()=>s.flow.queue.length===3);expect(s.futureArrivals).toBe(1);expect(s.insideCount).toBe(3);
   at(s,'counter');advance(s,()=>s.atRegister);const id=s.front!.id,before=s.coins;expect(s.checkout()).toBe(true);expect(s.coins-before).toBe(14);expect(s.checkout()).toBe(false);expect(s.flow.visitors.find(v=>v.id===id)!.paid).toBe(true);

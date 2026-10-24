@@ -1,3 +1,7 @@
+import {manualAvailable} from './first-night';
+import {drawFurniture} from './furniture-art';
+import {furnitureSlots} from './furnishings';
+import {dormFurniture,DORM_EXIT,moveDorm,advanceSimulation} from './experience';
 import {makeCustomerTextures,appearanceTexture} from './customer-art';
 import {appearanceFor} from './customer-appearance';
 import {visibleEnvironmentEvents} from './environment-events';
@@ -8,6 +12,13 @@ import { fixtures, ShopSimulation, TILE, WIDTH, HEIGHT } from './world';
 import style from '../data/store-style.json';
 export class SimulationScene extends Phaser.Scene {
   shop = new ShopSimulation();
+  speed:1|2=1;
+  private bedBook!:Phaser.GameObjects.Graphics;
+  private furnishingArt!:Phaser.GameObjects.Graphics;
+  private roomObjects:Phaser.GameObjects.GameObject[]=[];
+  private dormObjects:Phaser.GameObjects.GameObject[]=[];
+  private renderedRoom='';
+  onStockWarning:()=>void=()=>{};
   guideTarget: {x:number;y:number}|null=null;
   highlightPlayer=false;
   private eventMarkers!:Phaser.GameObjects.Graphics;
@@ -68,8 +79,8 @@ export class SimulationScene extends Phaser.Scene {
     const desk=fixtures.find(f=>f.id==='counter')!;
     const bookX=desk.x*TILE+6,bookY=desk.y*TILE+4;
     const book=this.add.graphics().setDepth((desk.y+desk.h)*TILE-9);
-    book.fillStyle(0x70523d).fillRect(bookX,bookY,18,14).fillStyle(0xe9d7ad).fillRect(bookX+2,bookY+1,14,10).fillStyle(0x9b7353).fillRect(bookX+9,bookY+1,1,10);
-    this.label(bookX+9,bookY-10,'员工须知','#70523d');
+    book.fillStyle(0xe9d7ad).fillRect(bookX,bookY,18,12).lineStyle(1,0x9b7353).strokeRect(bookX,bookY,18,12).lineBetween(bookX+3,bookY+4,bookX+14,bookY+4).lineBetween(bookX+3,bookY+8,bookX+12,bookY+8);
+    this.label(bookX+9,bookY-10,'操作提示卡','#70523d');
     // A second book rests between the terminal and sticker, on the existing counter surface.
     const todoX=desk.x*TILE+59,todoY=desk.y*TILE+4;
     book.fillStyle(0x746b4e).fillRect(todoX,todoY,14,17).fillStyle(0xe9dcba).fillRect(todoX+2,todoY+2,10,12);
@@ -80,6 +91,7 @@ export class SimulationScene extends Phaser.Scene {
     this.guide=this.add.graphics().setDepth(1500);
     this.stockLabels.rice=this.add.text(416,49,'饭团 0/6',{fontSize:'11px',color:'#493a32',backgroundColor:'#fff5df'}).setOrigin(.5).setDepth(1000);
     this.stockGraphics=this.add.graphics().setDepth(400);
+    for(const label of Object.values(this.stockLabels))label.setInteractive({useHandCursor:true}).on('pointerdown',()=>{if(this.activePlay&&!this.modal&&!this.paused)this.onStockWarning();});
 
     this.heldBox=this.add.image(0,0,'crate').setVisible(false);
     this.playerSprite=this.add.image(this.shop.player.x,this.shop.player.y,'dog-down-0').setOrigin(.5,.85);
@@ -89,7 +101,27 @@ export class SimulationScene extends Phaser.Scene {
     this.input.keyboard?.on('keydown-E',(event:KeyboardEvent)=>{if(!event.repeat&&this.activePlay&&!this.paused&&!this.modal)this.onInteract();});
     window.addEventListener('blur',this.resetInput);
     this.events.once('shutdown',()=>window.removeEventListener('blur',this.resetInput));
+    this.furnishingArt=this.add.graphics().setDepth(990);
+    this.roomObjects=this.children.list.filter(o=>o!==this.playerSprite&&o!==this.furnishingArt);
+    const before=new Set(this.children.list);const room=this.add.graphics();
+    room.fillStyle(0x6b756b).fillRect(0,0,512,640);
+    for(let y=64;y<608;y+=32)for(let x=32;x<480;x+=32)room.fillStyle((x+y)%64?0xcab18f:0xd7c09f).fillRect(x,y,32,32);
+    this.label(256,32,'员工宿舍','#fff1d3');
+    for(const f of dormFurniture){room.fillStyle(0x654c39).fillRect(f.x,f.y,f.w,f.h).fillStyle(0xb69872).fillRect(f.x+4,f.y+4,f.w-8,f.h-8);this.label(f.x+f.w/2,f.y+14,f.label);
+      if(f.id==='bed')room.fillStyle(0xe7debc).fillRect(f.x+8,f.y+8,f.w-16,36).fillStyle(0x829b87).fillRect(f.x+8,f.y+50,f.w-16,f.h-58);
+      if(f.id==='desk')room.fillStyle(0xede0bc).fillRect(f.x+30,f.y+14,30,20);
+      if(f.id==='shelf')room.lineStyle(3,0x72553f).lineBetween(f.x,f.y+32,f.x+f.w,f.y+32);
+    }
+    room.fillStyle(0x567a6a).fillRect(224,548,64,30);this.label(DORM_EXIT.x,DORM_EXIT.y,'下楼 ↓','#fff2d7');
+    this.bedBook=this.add.graphics().setDepth(995);
+    this.dormObjects=this.children.list.filter(o=>!before.has(o));this.applyRoom();
     this.onRefresh();
+  }
+  private applyRoom(){const room=this.shop.experience.room;if(this.renderedRoom===room)return;this.renderedRoom=room;
+    for(const o of this.roomObjects)(o as Phaser.GameObjects.Graphics).setVisible(room==='shop');
+    for(const o of this.dormObjects)(o as Phaser.GameObjects.Graphics).setVisible(room==='dorm');
+    for(const o of this.customerSprites.values())o.setVisible(room==='shop');
+    this.cameras.main.setScroll(0,0);this.resetInput();
   }
   resetInput = () => { this.joystick={x:0,y:0};this.input?.keyboard?.resetKeys(); };
   private label(x:number,y:number,text:string,color='#574b3c') {
@@ -128,21 +160,27 @@ export class SimulationScene extends Phaser.Scene {
   }
   update(time:number,delta:number) {
     if(!this.playerSprite)return;
-    const dt=Math.min(delta/1000,.05),s=this.shop;
+    const dt=Math.min(delta/1000,.05),s=this.shop;this.applyRoom();
+    this.bedBook.clear();if(s.experience.room==='dorm'&&manualAvailable(s))this.bedBook.fillStyle(0x70523d).fillRect(108,120,28,20).fillStyle(0xe9d7ad).fillRect(111,122,22,14).lineStyle(1,0x9b7353).lineBetween(122,122,122,136);
+    this.furnishingArt.clear();for(const item of s.furnishings.items){const slot=furnitureSlots.find(p=>p.id===item.slot);if(slot?.room===s.experience.room)drawFurniture(this.furnishingArt,item.itemId,slot.x,slot.y);}
+    const root=document.querySelector<HTMLElement>('#game')!;root.dataset.manualOnBed=String(s.experience.room==='dorm'&&manualAvailable(s));root.dataset.elapsed=String(s.flow.elapsed);root.dataset.speed=String(this.speed);
     let x=0,y=0;
-    if(this.activePlay&&!this.paused&&!this.modal&&!s.closed){
+    if(this.activePlay&&!this.paused&&!this.modal&&s.canExplore){
       x=this.joystick.x+(this.keys?.D.isDown||this.cursors?.right.isDown?1:0)-(this.keys?.A.isDown||this.cursors?.left.isDown?1:0);
       y=this.joystick.y+(this.keys?.S.isDown||this.cursors?.down.isDown?1:0)-(this.keys?.W.isDown||this.cursors?.up.isDown?1:0);
-      s.movePlayer(x,y,dt);s.tick(dt);
+      if(s.experience.room==='dorm')s.experience.dormPosition=moveDorm(s.experience.dormPosition,x,y,dt);else s.movePlayer(x,y,dt);advanceSimulation(s,dt,this.speed);
     }
     if(x||y)this.facing=Math.abs(x)>Math.abs(y)?x>0?'right':'left':y>0?'down':'up';
     const frame=x||y?1+Math.floor(time/150)%2:0;
-    this.playerSprite.setPosition(s.player.x,s.player.y).setDepth(s.player.y).setTexture(`dog-${this.facing}-${frame}`);
+    const location=s.experience.room==='dorm'?s.experience.dormPosition:s.player;
+    this.playerSprite.setPosition(location.x,location.y).setDepth(location.y).setTexture(`dog-${this.facing}-${frame}`);
+    if(s.experience.room==='dorm'){const el=document.querySelector<HTMLElement>('#game')!;el.dataset.room='dorm';el.dataset.playerX=String(location.x);el.dataset.playerY=String(location.y);this.onRefresh();return;}
+    document.querySelector<HTMLElement>('#game')!.dataset.room='shop';
     this.heldBox.setVisible(!!s.carrying).setPosition(s.player.x+11,s.player.y-5).setDepth(s.player.y+1).setTint(s.carrying?.goods==='milk'?0xecf0df:0xeac28e);
     for(const [id,sprite] of this.customerSprites)if(!s.flow.visitors.some(v=>v.id===id&&v.state!=='gone')){sprite.destroy();this.customerSprites.delete(id);}
     for(const v of s.flow.visitors){if(v.state==='gone')continue;let sprite=this.customerSprites.get(v.id);if(!sprite){sprite=this.add.image(v.position.x,v.position.y,'customer-down-0').setOrigin(.5,.85);this.customerSprites.set(v.id,sprite);}const dx=v.position.x-sprite.x,dy=v.position.y-sprite.y,direction=Math.abs(dx)>Math.abs(dy)?dx>0?'right':'left':dy>0?'down':'up';
       const hamster=v.customerId===CUSTOMER_001;let texture=`${hamster?'hamster':'customer'}-${dx||dy?direction:'down'}-${dx||dy?1+Math.floor(time/160)%2:0}`;
-      const appearance=appearanceFor(v);if(appearance)texture=appearanceTexture(appearance.id,dx||dy?direction:'down',dx||dy?1+Math.floor(time/160)%2:0);
+      const appearance=appearanceFor(v);if(appearance){sprite.setScale(appearance.species==='rabbit'?1.08:appearance.species==='hedgehog'?1.04:appearance.species==='duck'?.92:1);texture=appearanceTexture(appearance.id,dx||dy?direction:'down',dx||dy?1+Math.floor(time/160)%2:0);}
       if(hamster&&!dx&&!dy){if(v.shelfHelp==='waiting')texture=`hamster-reach-${Math.floor(time/350)%2}`;else if(v.entered&&v.state==='shopping'&&!v.inspected)texture='hamster-inspect-0';}
       sprite.setPosition(v.position.x,v.position.y).setDepth(v.position.y).setTexture(texture).setTint(v.customerId==='test-regular'?0xd1c3ab:0xffffff);
     }
@@ -161,10 +199,10 @@ export class SimulationScene extends Phaser.Scene {
       const f=fixtures.find(f=>f.id===(goods==='rice'?'freezer':goods))!;
       if(time<this.stockFlashUntil&&!document.body.classList.contains('reduced-motion'))this.stockGraphics.lineStyle(2,0xffedb8,.8).strokeRect(f.x*TILE-2,f.y*TILE-2,f.w*TILE+4,f.h*TILE+4);
       for(let i=0;i<s.shelves[goods];i++){
-        const x=f.x*TILE+10+(i%2)*27,y=f.y*TILE+(goods==='bread'&&shelfAdjusted(s.narrative.data)?39+Math.floor(i/2)*17:7+Math.floor(i/2)*29);
+        const x=f.x*TILE+10+(i%2)*27,y=f.y*TILE+(goods==='bread'&&s.breadAccessible?39+Math.floor(i/2)*17:7+Math.floor(i/2)*29);
         this.stockGraphics.fillStyle(goods==='milk'?0xe8efe4:goods==='rice'?0xf1edda:0xd7a66e).fillRect(x,y,16,20).fillStyle(goods==='milk'?0x729b9d:goods==='rice'?0x506c50:0x986f47).fillRect(x+3,y+8,10,5);
       }
-      this.stockLabels[goods]?.setText(`${goods==='milk'?'牛奶':goods==='bread'?'面包':'饭团'} ${s.shelves[goods]}/${s.capacity}`);if(goods==='rice')this.stockLabels.rice?.setVisible(s.business.level>=2);
+      const count=s.shelves[goods];this.stockLabels[goods]?.setText(`${goods==='milk'?'牛奶':goods==='bread'?'面包':'饭团'} ${count===0?'！缺货':count<=2?'快卖完了 '+count:count+'/'+s.capacity}`).setStyle({fontSize:'13px',color:count===0?'#703a25':'#493a32',backgroundColor:count===0?'#ffe09a':'#fff5df'});if(goods==='rice')this.stockLabels.rice?.setVisible(s.business.level>=2);
     }
     this.flower.setVisible(s.business.level>=3);
     this.guide.clear();

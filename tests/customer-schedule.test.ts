@@ -1,0 +1,21 @@
+import {describe,it,expect,vi,afterEach} from 'vitest';
+import {writeFileSync,mkdirSync} from 'node:fs';
+import {ShopSimulation,fixtures} from '../src/simulation/world';
+import {dailySchedule} from '../src/simulation/customer-schedule';
+import {appearanceById} from '../src/simulation/customer-appearance';
+import {snapshot,restoreSession,validSession} from '../src/simulation/persistence';
+import {CUSTOMER_001} from '../src/simulation/npc001';
+function seeded(seed:number){return()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};}
+afterEach(()=>vi.restoreAllMocks());
+describe('真实每日调度（测试种子仅用于可复现诊断，生产不重置随机源）',()=>{
+ it('连续10个游戏日：输出完整计划，真实购物/队列/结账/离店，刷新一致',()=>{vi.spyOn(Math,'random').mockImplementation(seeded(71123));let s=new ShopSimulation();s.furnishings.items=[{instanceId:'furniture-1',itemId:'low-shelf',slot:'bread-slot',boughtDay:1}];s.furnishings.nextId=2;s.furnishings.breadOnLowShelf=true;const report:unknown[]=[];const signatures=new Set<string>(),counts=new Set<number>(),hamsterDays:number[]=[];
+ for(let day=1;day<=10;day++){s.player={...fixtures.find(f=>f.id==='counter')!.spot};s.shelves={milk:6,bread:6,rice:0};s.startDay();const plan=structuredClone(s.flow.plan);counts.add(plan.length);expect(plan.length).toBeGreaterThanOrEqual(3);expect(plan.length).toBeLessThanOrEqual(6);const ordinary=plan.filter(a=>a.customerId==='ordinary');expect(new Set(ordinary.map(a=>a.appearanceId)).size).toBe(ordinary.length);if(plan.some(a=>a.customerId===CUSTOMER_001))hamsterDays.push(day);signatures.add(plan.map(a=>a.appearanceId??a.customerId).join(','));let restored=false;
+ for(let step=0;step<25000&&!s.canClose;step++){s.shelves.milk=6;s.shelves.bread=6;s.tick(.025);if(s.atRegister){expect(s.checkout()).toBe(true);expect(s.checkout()).toBe(false);}if(!restored&&s.flow.queue.length){const saved=snapshot(s);expect(validSession(saved)).toBe(true);s=restoreSession(saved);expect(s.flow.plan.map(({arrived,...p})=>p)).toEqual(plan.map(({arrived,...p})=>p));restored=true;}}
+ expect(s.canClose,JSON.stringify({day,flow:s.flow})).toBe(true);expect(s.served).toBe(plan.length);expect(s.flow.visitors.every(v=>v.paid&&v.state==='gone')).toBe(true);report.push({day,weekday:(day-1)%7+1,count:plan.length,visitors:plan.map((a,i)=>({order:i+1,customerId:a.customerId,species:appearanceById(a.appearanceId)?.species??'special',appearance:a.appearanceId??'fixed-special',arrivalSeconds:Number(a.at.toFixed(2)),shopping:a.shoppingList}))});expect(s.closeDay()).toBe(true);s=s.nextDay()!;
+ }
+ expect(signatures.size).toBe(10);expect(counts.size).toBeGreaterThan(1);expect(hamsterDays.length).toBeLessThan(10);for(let i=1;i<hamsterDays.length;i++)expect(hamsterDays[i]-hamsterDays[i-1]).toBeGreaterThanOrEqual(2);
+ mkdirSync('docs/experience-v1.1',{recursive:true});writeFileSync('docs/experience-v1.1/customer-schedule-10-days.json',JSON.stringify({note:'Deterministic diagnostic run; real simulation with generous stock fixture, not production seed/weather.',hamsterDays,days:report},null,2)+'\n');if(process.env.PUPPY_DEBUG_CUSTOMERS==='1')console.log(JSON.stringify(report,null,2));
+ });
+ it('相邻日计划不固定；库存/解锁决定清单，数量与空档有变化，重新开店不重抽',()=>{const random=seeded(12345),s=new ShopSimulation();s.business.data.day=5;s.shelves={milk:0,bread:6,rice:0};const plan=dailySchedule(s,random);expect(plan.filter(a=>a.customerId==='ordinary').every(a=>a.shoppingList?.every(g=>g==='bread'))).toBe(true);s.flow.plan=plan;s.startDay();const serialized=JSON.stringify(s.flow.plan);s.startDay();expect(JSON.stringify(s.flow.plan)).toBe(serialized);const r=restoreSession(snapshot(s));expect(JSON.stringify(r.flow.plan)).toBe(serialized);expect(plan.every(a=>!a.shoppingList?.includes('rice'))).toBe(true);});
+ it('特殊角色有独立身份与最短回访间隔，不是每日必来，也不占固定序号',()=>{const s=new ShopSimulation();s.business.data.day=2;s.narrative.visit(CUSTOMER_001,1);const noReturn=dailySchedule(s,()=>0);expect(noReturn.some(a=>a.customerId===CUSTOMER_001)).toBe(false);s.business.data.day=3;const positions=new Set<number>();for(let i=1;i<=300;i++){const plan=dailySchedule(s,seeded(i*13));const at=plan.findIndex(a=>a.customerId===CUSTOMER_001);if(at>=0){positions.add(at);expect(plan[at].appearanceId).toBeUndefined();}}expect(positions.size).toBeGreaterThan(1);});
+});
