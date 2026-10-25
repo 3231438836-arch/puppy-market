@@ -1,0 +1,10 @@
+{
+  "version": "0.5.1",
+  "builtAt": "2026-10-25T03:04:23.602Z",
+  "buildDate": "2026-10-25",
+  "commit": "3a15881b6b913a17ddd92b276f5db16918c4552a",
+  "shortCommit": "3a15881+dirty",
+  "branch": "feature/customer-001",
+  "dirty": true,
+  "mode": "production"
+}
