@@ -1,0 +1,12 @@
+{
+  "day": 1,
+  "status": "approved",
+  "title": "第一天 · 睡前日记",
+  "blocks": [
+    {"text": "感觉还挺轻松的。\n\n就是有点无聊。"},
+    {"text": "唉，今天就来了一个客人。", "when": {"singleCustomer": true}},
+    {"text": "也不知道明天会不会多一点。\n\n如果营业额太差的话，我会不会被赶走呀？"},
+    {"text": "可是我今天已经很认真地整理货架了。", "when": {"shelvesTidied": true}},
+    {"text": "应该不会吧。\n\n……\n\n算了。\n\n明天再看看。"}
+  ]
+}

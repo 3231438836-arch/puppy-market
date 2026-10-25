@@ -1,6 +1,7 @@
 import portraitNeutral from '../art/portraits/test-regular-neutral.svg?url';
 import portraitSoft from '../art/portraits/test-regular-soft.svg?url';
 import {narrativeContent} from './narrative';
+import {eveningDiary,sleepToNextDay} from './evening';
 import Phaser from 'phaser';
 import { SimulationScene } from './scene';
 import { loadName, normalizeName, saveName } from '../characters';
@@ -33,9 +34,14 @@ let hasSession=false;try{hasSession=localStorage.getItem(sessionKey)!==null&&sto
 const tutorial=new Tutorial(training?'puppy-mart.tutorial-replay.v1':undefined,hasSession);
 let notebookPage=0;let selectedGoods:Goods='milk';
 let dormOpen=false;
-function diaryText(){const day=s.business.data.day;const served=s.served;return day===1?'感觉还挺轻松的，就是有点无聊。唉，今天就一个客人，如果营业额太差我会不会被赶走呀。':served===0?'今天一个客人都没有。希望明天会热闹一点。':served>=4?'今天忙得脚不沾地。还好，大家都买到东西了。':'今天来了'+served+'位客人。明天不知道会不会有新面孔。';}
 function saveProgress(){if(entered){if(!writeStore(sessionKey,snapshot(s),storedSession.writable)&&storedSession.writable)saveNotice='当前浏览器无法保存进度，请勿关闭页面。';tutorial.save();}}
-function nextDay(){dormOpen=false;s=s.nextDay()??s;scene.shop=s;s.message='新的一天：'+(s.business.level>=2?'饭团已解锁，去仓库采购并放到冰柜货位。':'补货后接待顾客，完成目标可积累经验。');dialog=null;scene.modal=false;paused=false;scene.paused=false;lastSignature='';saveProgress();render();}
+function nextDay(){
+ if(!s.closed)return;
+ const next=sleepToNextDay(s,candidate=>writeStore(sessionKey,snapshot(candidate),storedSession.writable));
+ if(!next){saveNotice='未能保存下一天，仍停留在今晚。请重试；不要关闭页面。';lastSignature='';render();return;}
+ if(tutorial.observe(s,'review'))celebrate();
+ dormOpen=false;s=next;scene.shop=s;s.message='新的一天：'+(s.business.level>=2?'饭团已解锁，去仓库采购并放到冰柜货位。':'补货后接待顾客，完成目标可积累经验。');dialog=null;scene.modal=false;paused=false;scene.paused=false;saveNotice='';lastSignature='';render();
+}
 
 const game=new Phaser.Game({type:Phaser.AUTO,parent:'game',width:430,height:420,pixelArt:true,backgroundColor:'#efdfc2',scale:{mode:Phaser.Scale.RESIZE,autoCenter:Phaser.Scale.CENTER_BOTH},scene:[scene],audio:{noAudio:true}});
 const escape=(text:string)=>text.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]!)).replaceAll(String.fromCharCode(34),'&quot;').replaceAll(String.fromCharCode(39),'&#39;');
@@ -54,12 +60,12 @@ function render(){
  if(tutorial.observe(s))saveProgress();
  scene.guideTarget=tutorial.target(s);scene.highlightPlayer=tutorial.active&&tutorial.step===0;
  scene.modal=!!dialog||layout.open||s.closed;
- document.body.classList.toggle('sim-dialog-open',!!dialog||layout.open);
- const signature=JSON.stringify([dormOpen,s.nearby,s.warehouse,s.shelves,s.carrying,s.customerState,s.path.length===0,s.futureArrivals,s.insideCount,s.departedCount,s.basket,s.scanned,s.confirmed,s.cashReceived,s.change,s.coins,s.served,s.open,s.closed,Math.ceil(s.remaining),s.message,dialog,paused,tutorial.record,notebookPage,selectedGoods,s.business.data,s.narrative.data,s.feedbackRevision,sound.enabled,layout.open]);
+ document.body.classList.toggle('sim-dialog-open',!!dialog||layout.open||s.closed);
+ const signature=JSON.stringify([saveNotice,dormOpen,s.nearby,s.warehouse,s.shelves,s.carrying,s.customerState,s.path.length===0,s.futureArrivals,s.insideCount,s.departedCount,s.basket,s.scanned,s.confirmed,s.cashReceived,s.change,s.coins,s.served,s.open,s.closed,Math.ceil(s.remaining),s.message,dialog,paused,tutorial.record,notebookPage,selectedGoods,s.business.data,s.narrative.data,s.feedbackRevision,sound.enabled,layout.open]);
  if(s.feedbackRevision!==lastFeedback){lastFeedback=s.feedbackRevision;const toast=document.querySelector<HTMLElement>('#feedback-toast');clearTimeout(toastTimer);toast?.classList.remove('show');if(s.feedbackRevision>0){if(toast){toast.textContent=s.feedback;void toast.offsetWidth;toast.classList.add('show');toastTimer=window.setTimeout(()=>toast.classList.remove('show'),2800);}sound.play(s.feedback.startsWith('扫描')?'scan':'sale');if(s.feedback.includes('目标完成')||s.feedback.includes('升级'))microCelebrate();}}
  if(signature===lastSignature)return;lastSignature=signature;
  const action=contextAction();
- panel.innerHTML=`<div class="compact-hud"><span>第${s.business.data.day}天</span><b>◈ ${s.business.data.balance}</b><span class="clock">${s.open?Math.floor(s.flow.elapsed/60)+':'+String(Math.floor(s.flow.elapsed%60)).padStart(2,'0'):'准备'}</span><div class="business-strip"><span class="flow-counts" aria-label="每日客流">待到 ${s.futureArrivals} · 店内 ${s.insideCount} · 离店 ${s.departedCount}</span>${!s.closed?`<button class="business-toggle" data-do="business" ${paused||!!dialog||layout.open||(!s.open&&tutorial.active&&tutorial.step<4)||(s.open&&!s.canClose)?'disabled':''} title="${s.open&&!s.canClose?'等待计划顾客全部到店并离开':!s.open&&tutorial.active&&tutorial.step<4?'先完成教学补货':s.open?'查看打烊结算':'开始自动营业'}">${s.open?'打烊':'开店'}</button>`:''}</div><nav><button data-do="tasks" aria-label="任务">✓</button><button data-do="inventory" aria-label="库存">▦</button><button data-do="notebook" aria-label="员工须知">▤</button><button data-do="settings" id="layout-settings" aria-label="设置">⚙</button></nav></div>${tutorial.active&&!s.closed?`<aside class="guide-chip" aria-label="新手引导"><span>${String(tutorial.step+1).padStart(2,'0')} · ${escape(tutorial.text?.short??tutorial.text?.title??'')}</span><button data-do="skip-tutorial">跳过</button></aside>`:''}${paused?'<div class="pause-chip"><button data-do="pause">继续经营</button></div>':''}${saveNotice?`<p class="save-warning">${escape(saveNotice)}</p>`:''}${action&&!dialog&&!paused&&!layout.open&&!s.closed?`<button class="interact-pad" data-do="interact" aria-label="${action}">${action}<small>E</small></button>`:''}<div id="dialog" ${dialog||s.closed?'role="dialog" aria-modal="true" aria-label="店铺互动"':''}>${s.closed?`<section class="sim-dialog summary-sheet">${dormOpen?`<div class="dialog-heading"><h2>楼上 · 员工宿舍</h2><button data-do="back-summary">返回结算</button></div><p>吉娃娃坐在床边，翻开今天的日记。</p><blockquote>${escape(diaryText())}</blockquote><p>今天就到这里吧。</p><button class="primary wide" data-do="sleep">关灯睡觉 · 迎接明天</button>`:`<div class="dialog-heading"><h2>营业结算</h2><button class="primary" data-do="visit-dorm">回宿舍休息</button></div>${growthSummary(s)}<p class="muted">营业结束了。回宿舍写完日记，再开始新的一天。</p>${tutorial.active?'<button data-do="next-day">完成教程</button>':''}`}</section>`:dialogContent()}</div>`;
+ panel.innerHTML=`<div class="compact-hud"><span>第${s.business.data.day}天</span><b>◈ ${s.business.data.balance}</b><span class="clock">${s.open?Math.floor(s.flow.elapsed/60)+':'+String(Math.floor(s.flow.elapsed%60)).padStart(2,'0'):'准备'}</span><div class="business-strip"><span class="flow-counts" aria-label="每日客流">待到 ${s.futureArrivals} · 店内 ${s.insideCount} · 离店 ${s.departedCount}</span>${!s.closed?`<button class="business-toggle" data-do="business" ${paused||!!dialog||layout.open||(!s.open&&tutorial.active&&tutorial.step<4)||(s.open&&!s.canClose)?'disabled':''} title="${s.open&&!s.canClose?'等待计划顾客全部到店并离开':!s.open&&tutorial.active&&tutorial.step<4?'先完成教学补货':s.open?'查看打烊结算':'开始自动营业'}">${s.open?'打烊':'开店'}</button>`:''}</div><nav><button data-do="tasks" aria-label="任务">✓</button><button data-do="inventory" aria-label="库存">▦</button><button data-do="notebook" aria-label="员工须知">▤</button><button data-do="settings" id="layout-settings" aria-label="设置">⚙</button></nav></div>${tutorial.active&&!s.closed?`<aside class="guide-chip" aria-label="新手引导"><span>${String(tutorial.step+1).padStart(2,'0')} · ${escape(tutorial.text?.short??tutorial.text?.title??'')}</span><button data-do="skip-tutorial">跳过</button></aside>`:''}${paused?'<div class="pause-chip"><button data-do="pause">继续经营</button></div>':''}${saveNotice?`<p class="save-warning">${escape(saveNotice)}</p>`:''}${action&&!dialog&&!paused&&!layout.open&&!s.closed?`<button class="interact-pad" data-do="interact" aria-label="${action}">${action}<small>E</small></button>`:''}<div id="dialog" ${dialog||s.closed?'role="dialog" aria-modal="true" aria-label="店铺互动"':''}>${s.closed?`<section class="sim-dialog summary-sheet ${dormOpen?'evening-sheet':''}">${dormOpen?`<div class="dialog-heading"><h2>楼上 · 员工宿舍</h2><button data-do="back-summary">返回结算</button></div><article class="evening-body" aria-label="睡前日记"><p class="muted">文字场景原型 · 可随时返回结算</p><h3>${escape(eveningDiary(s.business.data.day,s.served).title)}</h3><p class="muted">${escape(eveningDiary(s.business.data.day,s.served).facts)}</p>${eveningDiary(s.business.data.day,s.served).blocks.map(text=>`<p class="diary-text">${escape(text)}</p>`).join('')}</article><div class="evening-actions">${saveNotice?`<p role="alert">${escape(saveNotice)}</p>`:''}<button class="primary wide" data-do="sleep">关灯睡觉 · 迎接明天</button></div>`:`<div class="dialog-heading"><h2>营业结算</h2><button class="primary" data-do="visit-dorm">回宿舍休息</button></div>${growthSummary(s)}<p class="muted">营业结束了。回宿舍写完日记，再开始新的一天。</p>${tutorial.active?'<button data-do="next-day">完成教程</button>':''}`}</section>`:dialogContent()}</div>`;
 }
 function contextAction(){switch(s.nearby){case 'notebook':return '阅读';case 'warehouse':return '拿货';case 'milk':case 'bread':return '补货';case 'freezer':return s.business.level>=2?'补货':null;case 'counter':return s.atRegister?'结账':null;case 'entrance':return null;default:return null;}}
 function heading(title:string){return `<div class="dialog-heading"><h2>${title}</h2><button data-do="dismiss">返回店铺</button></div>`;}
@@ -101,7 +107,23 @@ function interact(){
 scene.onRefresh=render;scene.onInteract=interact;
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&dialog&&!layout.open){e.preventDefault();if(dialog==='conversation')s.narrative.skip();dismissDialog();saveProgress();render();}});
 panel.addEventListener('pointerdown',e=>{if((e.target as HTMLElement).closest('[data-do="interact"]')){e.preventDefault();interact();}});
+// Mobile browsers may consume the first synthetic click after diary momentum scrolling.
+// Activate only an intentional primary touch release on the same fixed evening button.
+let eveningTap:{id:number;button:HTMLButtonElement;x:number;y:number}|null=null;
+let ignoreEveningClick=false;
+panel.addEventListener('pointerdown',e=>{
+ ignoreEveningClick=false;
+ const button=(e.target as HTMLElement).closest<HTMLButtonElement>('.evening-sheet button');
+ if(e.pointerType==='touch'&&e.isPrimary&&button){eveningTap={id:e.pointerId,button,x:e.clientX,y:e.clientY};e.preventDefault();}
+});
+panel.addEventListener('pointermove',e=>{if(eveningTap?.id===e.pointerId&&Math.hypot(e.clientX-eveningTap.x,e.clientY-eveningTap.y)>12)eveningTap=null;});
+panel.addEventListener('pointercancel',()=>{eveningTap=null;});
+panel.addEventListener('pointerup',e=>{
+ const tap=eveningTap;if(!tap||tap.id!==e.pointerId)return;eveningTap=null;
+ if((e.target as HTMLElement).closest('button')===tap.button&&tap.button.isConnected){e.preventDefault();ignoreEveningClick=true;tap.button.click();}
+});
 panel.addEventListener('click',e=>{
+ if(ignoreEveningClick&&e.detail>0){ignoreEveningClick=false;e.preventDefault();return;}
  const action=(e.target as HTMLElement).closest<HTMLButtonElement>('button')?.dataset.do;if(!action)return;if(action==='interact'&&e.detail>0)return;
  resetMovement();
  if(action==='enter'){
@@ -127,8 +149,8 @@ panel.addEventListener('click',e=>{
  else if(action==='page-next')notebookPage=Math.min((tutorialContent.pages.length+tutorialContent.steps.length)-1,notebookPage+1);
  else if(action==='visit-dorm'){if(s.closed)dormOpen=true;}
  else if(action==='back-summary'){dormOpen=false;}
- else if(action==='sleep'){if(s.closed){if(tutorial.observe(s,'review'))celebrate();nextDay();}return;}
- else if(action==='next-day'){if(tutorial.observe(s,'review'))celebrate();nextDay();return;}
+ else if(action==='sleep'){if(s.closed&&dormOpen)nextDay();return;}
+ else if(action==='next-day'){if(s.closed&&tutorial.active)nextDay();return;}
  else if(paused)return;
  else if(action==='business'){if(s.open){if(s.canClose)dialog='closing';}else if(!tutorial.active||tutorial.step>=4){s.tutorialDay=tutorial.active;s.shoppingList=tutorial.active?['milk']:s.business.unlocked;s.startDay();}}
  else if(action==='interact'){interact();return;}
