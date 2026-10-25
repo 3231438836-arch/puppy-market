@@ -34,7 +34,7 @@ export function validSession(value:unknown):value is SessionData{
 }
 export function restoreSession(v:SessionData):ShopSimulation{
  const shop=new ShopSimulation();for(const key of Object.keys(snapshot(shop))){if(key==='version'||key==='business'||key==='flow'||key==='tutorialDay'||key==='narrative')continue;Object.assign(shop,{[key]:structuredClone(v[key as keyof SessionData])});}shop.warehouse.rice??=0;shop.shelves.rice??=0;shop.business=v.business?new Business(v.business):new Business();if(!v.business)shop.business.importLegacy(shop.coins,shop.served);
- shop.narrative=new Narrative(v.narrative);
+ shop.narrative=new Narrative(v.narrative);shop.narrative.migrateUnmetSchedule(shop.business.data.day,!!v.narrative);
  shop.tutorialDay=v.tutorialDay===true;
  shop.flow=v.flow?structuredClone(v.flow):freshFlow();
  if(!v.flow&&(shop.open||shop.closed)){

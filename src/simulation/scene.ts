@@ -1,4 +1,6 @@
 import Phaser from 'phaser';
+import {makeHamsterTextures} from './hamster-art';
+import {CUSTOMER_001} from './narrative';
 import { fixtures, ShopSimulation, TILE, WIDTH, HEIGHT } from './world';
 import style from '../data/store-style.json';
 export class SimulationScene extends Phaser.Scene {
@@ -25,7 +27,7 @@ export class SimulationScene extends Phaser.Scene {
   private facing = 'down';
   constructor() { super('simulation'); }
   create() {
-    this.makeSprites();
+    this.makeSprites();makeHamsterTextures(this);
     const floor = this.add.graphics();
     for (let y = 0; y < HEIGHT; y++) for (let x = 0; x < WIDTH; x++) {
       const wall = x === 0 || y === 0 || x === WIDTH - 1 || y === HEIGHT - 1;
@@ -128,7 +130,7 @@ export class SimulationScene extends Phaser.Scene {
     this.playerSprite.setPosition(s.player.x,s.player.y).setDepth(s.player.y).setTexture(`dog-${this.facing}-${frame}`);
     this.heldBox.setVisible(!!s.carrying).setPosition(s.player.x+11,s.player.y-5).setDepth(s.player.y+1).setTint(s.carrying?.goods==='milk'?0xecf0df:0xeac28e);
     for(const [id,sprite] of this.customerSprites)if(!s.flow.visitors.some(v=>v.id===id&&v.state!=='gone')){sprite.destroy();this.customerSprites.delete(id);}
-    for(const v of s.flow.visitors){if(v.state==='gone')continue;let sprite=this.customerSprites.get(v.id);if(!sprite){sprite=this.add.image(v.position.x,v.position.y,'customer-down-0').setOrigin(.5,.85);this.customerSprites.set(v.id,sprite);}const dx=v.position.x-sprite.x,dy=v.position.y-sprite.y,direction=Math.abs(dx)>Math.abs(dy)?dx>0?'right':'left':dy>0?'down':'up';sprite.setPosition(v.position.x,v.position.y).setDepth(v.position.y).setTexture(`customer-${dx||dy?direction:'down'}-${dx||dy?1+Math.floor(time/160)%2:0}`).setTint(v.customerId==='test-regular'?0xd1c3ab:0xffffff);}
+    for(const v of s.flow.visitors){if(v.state==='gone')continue;let sprite=this.customerSprites.get(v.id);if(!sprite){sprite=this.add.image(v.position.x,v.position.y,'customer-down-0').setOrigin(.5,.85);this.customerSprites.set(v.id,sprite);}const dx=v.position.x-sprite.x,dy=v.position.y-sprite.y,direction=Math.abs(dx)>Math.abs(dy)?dx>0?'right':'left':dy>0?'down':'up';sprite.setPosition(v.position.x,v.position.y).setDepth(v.position.y).setTexture(`${v.customerId===CUSTOMER_001?'hamster':'customer'}-${dx||dy?direction:'down'}-${dx||dy?1+Math.floor(time/160)%2:0}`).setTint(v.customerId==='test-regular'?0xd1c3ab:0xffffff);if(v.customerId===CUSTOMER_001&&s.narrative.data.active?.visitorId===v.id&&s.narrative.event?.eventId==='customer001-first-shelf')sprite.setTexture(`hamster-reach-${Math.floor(time/350)%2}`);}
     if(this.lastStockRevision!==s.stockRevision){this.lastStockRevision=s.stockRevision;this.stockFlashUntil=time+450;}
     this.stockGraphics.clear();
     for(const goods of ['milk','bread','rice'] as const){
@@ -147,6 +149,7 @@ export class SimulationScene extends Phaser.Scene {
       if(this.highlightPlayer)this.guide.lineStyle(2,0xffffe5).strokeRect(s.player.x-17,s.player.y-35,34,39);
     }
     const el=document.querySelector<HTMLElement>('#game')!;
+    el.dataset.customers=JSON.stringify(s.flow.visitors.map(v=>({id:v.id,customerId:v.customerId,state:v.state,x:v.position.x,y:v.position.y})));
     el.dataset.playerX=String(s.player.x);el.dataset.playerY=String(s.player.y);
     this.onRefresh();
   }

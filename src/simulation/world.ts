@@ -1,4 +1,4 @@
-import {Narrative} from './narrative';
+import {Narrative,CUSTOMER_001} from './narrative';
 import {arrivalPlan,freshFlow,type Visitor} from './customer-flow';
 import { selectInteraction } from './interaction';
 import { Business } from './business';
@@ -105,7 +105,10 @@ export class ShopSimulation {
   startDay() {
     if (this.open || this.closed) return;
     this.open = true;
-    if(!this.flow.plan.length)this.flow.plan=arrivalPlan(this.business.data.day,this.tutorialDay?1:4);
+    if(!this.flow.plan.length){
+      this.flow.plan=arrivalPlan(this.business.data.day,this.tutorialDay?1:4);
+      if(!this.tutorialDay){const id=this.narrative.scheduledSpecial(this.business.data.day);if(id)this.flow.plan[Math.floor(Math.random()*this.flow.plan.length)].customerId=id;}
+    }
     this.tick(.001);this.message='已开店：顾客会按计划自动到店；补货后到店员侧一键结账。';
   }
   get futureArrivals(){return this.flow.plan.filter(a=>!a.arrived).length;}
@@ -145,12 +148,13 @@ export class ShopSimulation {
   }
   private route(v:Visitor,target:Point,others:Visitor[]){const origin=center(Math.floor(v.position.x/TILE),Math.floor(v.position.y/TILE));const path=findPath(origin,target,others.map(o=>o.position));if(Math.hypot(origin.x-v.position.x,origin.y-v.position.y)>1)path.unshift(origin);return path;}
   tick(seconds:number){
-    if(!this.open||this.closed||seconds<=0)return;
+    if(!this.open||this.closed||seconds<=0||this.narrative.data.active)return;
     this.flow.elapsed+=seconds;this.remaining=Math.max(0,this.remaining-seconds);
     const active=this.flow.visitors.filter(v=>v.state!=='gone');
     const pending=this.flow.plan.find(a=>!a.arrived&&a.at<=this.flow.elapsed);
     if(pending&&active.length<3&&!active.some(v=>Math.hypot(v.position.x-ENTRANCE_SPOT.x,v.position.y-ENTRANCE_SPOT.y)<30)){
-      pending.arrived=true;const customerId=pending.id.endsWith('1')?'test-regular':'ordinary';if(!this.tutorialDay)this.narrative.visit(customerId,this.business.data.day);const available=this.business.unlocked.filter(id=>this.shelves[id]>0);
+      pending.arrived=true;const customerId=pending.customerId??'ordinary';if(!this.tutorialDay)this.narrative.visit(customerId,this.business.data.day,pending.id);const available=this.business.unlocked.filter(id=>this.shelves[id]>0);
+      if(customerId===CUSTOMER_001)available.sort((a,b)=>Number(b==='bread')-Number(a==='bread'));
       this.flow.visitors.push({id:pending.id,customerId,position:{...ENTRANCE_SPOT},entered:false,state:'shopping',path:[],shoppingList:available.length?available.slice(0,2):['milk'],shoppingIndex:0,basket:[],queueOrder:null,paid:false,waitSeconds:0});
     }
     // Front of queue and departing customers move first; occupancy prevents overlap.
@@ -172,6 +176,7 @@ export class ShopSimulation {
       if(v.state==='leaving'){v.state='gone';this.message=this.canClose?'今日客流已全部离店，可以到入口打烊。':'顾客已离店，下一位会自动到来。';continue;}
       if(v.state==='queueing'){v.waitSeconds+=seconds;continue;}
       const goods=v.shoppingList[v.shoppingIndex];
+      if(v.customerId===CUSTOMER_001&&this.narrative.begin(v.customerId,v.id,this.business.data.day,'shelf')){this.syncLegacy();return;}
       if(!this.shelves[goods]){v.state='waiting-stock';v.waitSeconds+=seconds;continue;}
       this.shelves[goods]--;v.basket.push(goods);v.shoppingIndex++;
       if(v.shoppingIndex>=v.shoppingList.length){v.state='queueing';v.queueOrder=this.flow.nextQueueOrder++;this.flow.queue.push(v.id);}else v.state='shopping';

@@ -1,0 +1,13 @@
+{
+ "notice":"小仓鼠临时像素美术；首次求助正文待作者确认，非已完成文学内容。",
+ "customer":{"customerId":"CUSTOMER_001","displayName":"小仓鼠","spriteId":"hamster","portraitId":"customer001","shoppingPreferences":["bread"],"authorNotes":"罗伯罗夫斯基仓鼠，刚成年；不补全姓名、职业、室友或身份。"},
+ "schedule":{"earliestDay":2,"minReturnGap":2,"returnWeight":0.35},
+ "events":[
+  {"eventId":"customer001-first-shelf","customerId":"CUSTOMER_001","minVisits":1,"minDay":2,"repeatable":false,"dialogueRef":"first","entry":"help","resultFlag":"customer001-first-finished","trigger":"shelf"},
+  {"eventId":"customer001-shelf-noticed","customerId":"CUSTOMER_001","minVisits":2,"minDay":2,"repeatable":false,"requires":"customer001-first-finished","dialogueRef":"renovation","entry":"notice","resultFlag":"customer001-renovation-noticed","trigger":"checkout","requiresAccessibleShelf":true,"requiresDifferentVisit":true}
+ ],
+ "dialogues":{
+  "first":{"help":{"text":"【待作者填写】小仓鼠在高货架前需要帮忙取商品。","expression":"neutral"}},
+  "renovation":{"notice":{"text":"欸？你们终于翻新啦？还真是新官上任三把火呀。","expression":"soft"}}
+ }
+}

@@ -1,6 +1,6 @@
+import hamsterPortrait from '../art/portraits/customer001.svg?url';
 import portraitNeutral from '../art/portraits/test-regular-neutral.svg?url';
 import portraitSoft from '../art/portraits/test-regular-soft.svg?url';
-import {narrativeContent} from './narrative';
 import {eveningDiary,sleepToNextDay} from './evening';
 import Phaser from 'phaser';
 import { SimulationScene } from './scene';
@@ -56,7 +56,7 @@ function render(){
   if(panel.querySelector('#enter-shop'))return;
   panel.innerHTML=`<div class="eyebrow">PUPPY MART · P1</div><h1>今天，走进小店</h1><label class="name-label" for="manager-name">给吉娃娃店长取个名字</label><input id="manager-name" maxlength="32" value="${escape(managerName)}" placeholder="你想怎样称呼店长？"><p class="muted">沿用本机名字；不修改已有经营存档。</p><button id="enter-shop" class="primary wide" data-do="enter">进入便利店 →</button><p>首次进入会逐步引导实际移动、补货和收银；可随时跳过或重新学习。</p><a href="?mode=classic">回到经典 P0 模式</a>`;return;
  }
- if(s.narrative.data.active)dialog='conversation';
+ if(s.narrative.data.active&&dialog!=='conversation'){dialog='conversation';saveProgress();}
  if(tutorial.observe(s))saveProgress();
  scene.guideTarget=tutorial.target(s);scene.highlightPlayer=tutorial.active&&tutorial.step===0;
  scene.modal=!!dialog||layout.open||s.closed;
@@ -72,7 +72,7 @@ function heading(title:string){return `<div class="dialog-heading"><h2>${title}<
 function dialogContent(){
  if(dialog==='conversation'){
   const node=s.narrative.current;if(!node)return '';
-  return `<section class="sim-dialog conversation" aria-label="顾客对话"><div class="dialog-heading"><h2>${escape(node.displayName)}</h2><button data-do="dialogue-skip">跳过对话</button></div><img class="portrait" src="${node.expression==='soft'?portraitSoft:portraitNeutral}" alt="测试熟客像素肖像"><div class="dialogue-body"><small>${escape(narrativeContent.notice)}</small><p>${escape(node.text)}</p><div class="dialogue-choices">${node.choices.length?node.choices.map((choice,index)=>`<button data-do="dialogue-choice-${index}">${escape(choice.label)}</button>`).join(''):'<button class="primary" data-do="dialogue-continue">继续</button>'}</div></div></section>`;
+  return `<section class="sim-dialog conversation" aria-label="顾客对话"><div class="dialog-heading"><h2>${escape(node.displayName)}</h2><button data-do="dialogue-skip">跳过对话</button></div><img class="portrait" src="${node.portraitId==='customer001'?hamsterPortrait:node.expression==='soft'?portraitSoft:portraitNeutral}" alt="${node.portraitId==='customer001'?'小仓鼠临时像素肖像':'测试熟客像素肖像'}"><div class="dialogue-body"><small>${escape(node.notice)}</small><p>${escape(node.text)}</p><div class="dialogue-choices">${node.choices.length?node.choices.map((choice,index)=>`<button data-do="dialogue-choice-${index}">${escape(choice.label)}</button>`).join(''):'<button class="primary" data-do="dialogue-continue">继续</button>'}</div></div></section>`;
  }
 
  if(dialog==='notebook'){

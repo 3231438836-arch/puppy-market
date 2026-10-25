@@ -1,0 +1,17 @@
+{
+  "status": "superseded-draft",
+  "enabledInProduction": false,
+  "source": "历史候选文本，已被 Issue #2 作者最新确认覆盖；仅归档，不被运行时加载。",
+  "supersededCandidates": [
+    "哎呀，你们换店员啦？我说呢，刚才进来还以为认错人了。",
+    "哎，你帮我拿一下那个呗？对对，上面那个。",
+    "我跟之前那个说了好几次了，我够不到，他也是一点没管……真是的。"
+  ],
+  "currentDraft": {
+    "status": "draft",
+    "source": "Issue #2 作者最新确认（2026-10-25）",
+    "summary": "仓鼠礼貌请吉娃娃帮忙取高处商品，建议把部分商品放低；吉娃娃说「我记一下。」",
+    "confirmedCharacterDirection": "年轻仓鼠，身形小但独立认真；不能写成老头或幼稚角色。",
+    "enabledInProduction": false
+  }
+}
