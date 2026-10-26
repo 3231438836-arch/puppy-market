@@ -1,3 +1,4 @@
+import {storageKey} from './storage-key';
 /** Optional author metadata; never pass this whole object into player UI. */
 export interface CharacterData {
   id: string;
@@ -11,7 +12,7 @@ export interface CharacterData {
 export function publicCharacter(character: CharacterData) {
   return { id: character.id, preferredName: character.preferredName };
 }
-export const PLAYER_PROFILE_KEY = 'puppy-mart.player-profile.v1';
+export const PLAYER_PROFILE_KEY = storageKey('puppy-mart.player-profile.v1');
 export function normalizeName(value: string): string {
   return Array.from(value.trim()).slice(0, 16).join('');
 }

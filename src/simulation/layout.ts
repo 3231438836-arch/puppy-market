@@ -1,6 +1,7 @@
+import {storageKey} from '../storage-key';
 import {readStore,writeStore} from './persistence';
 export type Orientation='portrait'|'landscape';
-export const LAYOUT_KEY='puppy-mart.layout.v1';
+export const LAYOUT_KEY=storageKey('puppy-mart.layout.v1');
 export interface LayoutPreferences {version:1;selected:boolean;preferred:Orientation;joystickSize:number;buttonSize:number;joystickInset:number;sensitivity?:number}
 export function defaultLayout():LayoutPreferences{return{version:1,selected:false,preferred:'portrait',joystickSize:120,buttonSize:78,joystickInset:18,sensitivity:1};}
 export function viewportOrientation(width:number,height:number):Orientation{return width>height?'landscape':'portrait';}

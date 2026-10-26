@@ -1,8 +1,9 @@
+import {storageKey} from '../storage-key';
 import {Narrative,validNarrative} from './narrative';
 import {freshFlow,arrivalPlan,validFlow} from './customer-flow';
 import { Business, validBusiness } from './business';
 import { ShopSimulation, canStand, fixtures, type Goods, type Point, type CustomerState } from './world';
-export const SESSION_KEY='puppy-mart.shop-session.v1';
+export const SESSION_KEY=storageKey('puppy-mart.shop-session.v1');
 export interface StoreResult<T> { value:T; writable:boolean; warning:string }
 export function readStore<T>(key:string,fallback:()=>T,valid:(value:unknown)=>value is T):StoreResult<T>{
  try{const raw=localStorage.getItem(key);if(raw===null)return{value:fallback(),writable:true,warning:''};const value:unknown=JSON.parse(raw);if(valid(value))return{value,writable:true,warning:''};return{value:fallback(),writable:false,warning:'检测到不支持的本机记录，原数据已保留；本次仅临时游玩。'};}

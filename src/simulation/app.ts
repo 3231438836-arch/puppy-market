@@ -1,3 +1,4 @@
+import {storageKey,previewId} from '../storage-key';
 import hamsterPortrait from '../art/portraits/customer001.svg?url';
 import portraitNeutral from '../art/portraits/test-regular-neutral.svg?url';
 import portraitSoft from '../art/portraits/test-regular-soft.svg?url';
@@ -18,7 +19,7 @@ import './layout.css';
 import './immersive.css';
 import { mountFloatingJoystick } from './floating-joystick';
 const layout=new LayoutController();
-let reducedMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;try{const stored=localStorage.getItem('puppy-mart.motion.v1');if(stored!==null)reducedMotion=stored==='reduced';}catch{}
+let reducedMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;try{const stored=localStorage.getItem(storageKey('puppy-mart.motion.v1'));if(stored!==null)reducedMotion=stored==='reduced';}catch{}
 document.body.classList.toggle('reduced-motion',reducedMotion);
 const sound=new Sound();let lastFeedback=0;let toastTimer=0;
 const panel=document.querySelector<HTMLElement>('#controls')!;
@@ -27,11 +28,11 @@ gameElement.classList.add('simulation-map');
 document.querySelector('header span')!.textContent='街角便利店 · P1 教学与成长';
 const scene=new SimulationScene();
 const training=new URLSearchParams(location.search).get('training')==='1';
-const sessionKey=training?'puppy-mart.training-session.v1':SESSION_KEY;
+const sessionKey=training?storageKey('puppy-mart.training-session.v1'):SESSION_KEY;
 const storedSession=loadSession(sessionKey);
 let s=restoreSession(storedSession.value);scene.shop=s;
 let hasSession=false;try{hasSession=localStorage.getItem(sessionKey)!==null&&storedSession.writable;}catch{}
-const tutorial=new Tutorial(training?'puppy-mart.tutorial-replay.v1':undefined,hasSession);
+const tutorial=new Tutorial(training?storageKey('puppy-mart.tutorial-replay.v1'):undefined,hasSession);
 let notebookPage=0;let selectedGoods:Goods='milk';
 let dormOpen=false;
 function saveProgress(){if(entered){if(!writeStore(sessionKey,snapshot(s),storedSession.writable)&&storedSession.writable)saveNotice='当前浏览器无法保存进度，请勿关闭页面。';tutorial.save();}}
@@ -54,7 +55,7 @@ const goodsName=(id:string)=>products.find(p=>p.id===id)!.name;
 function render(){
  if(!entered){
   if(panel.querySelector('#enter-shop'))return;
-  panel.innerHTML=`<div class="eyebrow">PUPPY MART · P1</div><h1>今天，走进小店</h1><label class="name-label" for="manager-name">给吉娃娃店长取个名字</label><input id="manager-name" maxlength="32" value="${escape(managerName)}" placeholder="你想怎样称呼店长？"><p class="muted">沿用本机名字；不修改已有经营存档。</p><button id="enter-shop" class="primary wide" data-do="enter">进入便利店 →</button><p>首次进入会逐步引导实际移动、补货和收银；可随时跳过或重新学习。</p><a href="?mode=classic">回到经典 P0 模式</a>`;return;
+  panel.innerHTML=`<div class="eyebrow">PUPPY MART · P1</div>${previewId?`<p class="preview-notice">P2 功能试玩 · ${escape(previewId)}<br>独立测试存档，不影响正式版。包含文字宿舍、睡前日记与仓鼠保底首遇；首遇对白待作者定稿，翻新回访等待家具系统接通。</p>`:''}<h1>今天，走进小店</h1><label class="name-label" for="manager-name">给吉娃娃店长取个名字</label><input id="manager-name" maxlength="32" value="${escape(managerName)}" placeholder="你想怎样称呼店长？"><p class="muted">沿用本机名字；不修改已有经营存档。</p><button id="enter-shop" class="primary wide" data-do="enter">进入便利店 →</button><p>首次进入会逐步引导实际移动、补货和收银；可随时跳过或重新学习。</p><a href="?mode=classic">回到经典 P0 模式</a>`;return;
  }
  if(s.narrative.data.active&&dialog!=='conversation'){dialog='conversation';saveProgress();}
  if(tutorial.observe(s))saveProgress();
@@ -138,7 +139,7 @@ panel.addEventListener('click',e=>{
  else if(action.startsWith('dialogue-choice-'))s.narrative.choose(Number(action.slice(16)));
  else if(action==='dismiss')dismissDialog();
  else if(action==='skip-tutorial'){tutorial.skip();s.message='已跳过教程。随时打开员工须知，或选择重新学习。';}
- else if(action==='replay'){const replay=new Tutorial('puppy-mart.tutorial-replay.v1');writeStore(replay.key,{version:1,step:0,status:'active'},replay.writable);const old=loadSession('puppy-mart.training-session.v1');writeStore('puppy-mart.training-session.v1',snapshot(new ShopSimulation()),old.writable);location.href='?training=1';return;}
+ else if(action==='replay'){const replay=new Tutorial(storageKey('puppy-mart.tutorial-replay.v1'));writeStore(replay.key,{version:1,step:0,status:'active'},replay.writable);const old=loadSession(storageKey('puppy-mart.training-session.v1'));writeStore(storageKey('puppy-mart.training-session.v1'),snapshot(new ShopSimulation()),old.writable);location.href='?training=1';return;}
  else if(action==='settings'){layout.show();}
  else if(action==='tasks'||action==='inventory'){dialog=action;}
  else if(action.startsWith('select-'))selectedGoods=action.slice(7) as Goods;
@@ -174,8 +175,8 @@ render();
 setInterval(saveProgress,1000);
 window.addEventListener('pagehide',saveProgress);
 
-layout.gameControls=()=>`<div class="sim-actions"><button data-game-action="pause">${paused?'继续经营':'暂停经营'}</button><button data-game-action="sound">音效：${sound.enabled?'开':'关'}</button><button data-game-action="motion">减少动态：${reducedMotion?'开':'关'}</button><button data-game-action="replay">重新学习</button></div>`;
-layout.onGameAction=action=>{if(action==='pause'){paused=!paused;scene.paused=paused;}else if(action==='sound')sound.toggle();else if(action==='motion'){reducedMotion=!reducedMotion;document.body.classList.toggle('reduced-motion',reducedMotion);try{localStorage.setItem('puppy-mart.motion.v1',reducedMotion?'reduced':'full');}catch{}}else if(action==='replay'){panel.querySelector<HTMLButtonElement>('[data-do="replay"]')?.click();const replay=new Tutorial('puppy-mart.tutorial-replay.v1');writeStore(replay.key,{version:1,step:0,status:'active'},replay.writable);const old=loadSession('puppy-mart.training-session.v1');writeStore('puppy-mart.training-session.v1',snapshot(new ShopSimulation()),old.writable);location.href='?training=1';}saveProgress();render();};
+layout.gameControls=()=>`${previewId?`<p>P2 独立试玩 · ${escape(previewId)} · 不修改正式存档</p>`:''}<div class="sim-actions"><button data-game-action="pause">${paused?'继续经营':'暂停经营'}</button><button data-game-action="sound">音效：${sound.enabled?'开':'关'}</button><button data-game-action="motion">减少动态：${reducedMotion?'开':'关'}</button><button data-game-action="replay">重新学习</button></div>`;
+layout.onGameAction=action=>{if(action==='pause'){paused=!paused;scene.paused=paused;}else if(action==='sound')sound.toggle();else if(action==='motion'){reducedMotion=!reducedMotion;document.body.classList.toggle('reduced-motion',reducedMotion);try{localStorage.setItem(storageKey('puppy-mart.motion.v1'),reducedMotion?'reduced':'full');}catch{}}else if(action==='replay'){panel.querySelector<HTMLButtonElement>('[data-do="replay"]')?.click();const replay=new Tutorial(storageKey('puppy-mart.tutorial-replay.v1'));writeStore(replay.key,{version:1,step:0,status:'active'},replay.writable);const old=loadSession(storageKey('puppy-mart.training-session.v1'));writeStore(storageKey('puppy-mart.training-session.v1'),snapshot(new ShopSimulation()),old.writable);location.href='?training=1';}saveProgress();render();};
 layout.onChange=()=>{resetMovement();lastSignature='';render();};
 layout.mount();
 let resizeFrame=0;

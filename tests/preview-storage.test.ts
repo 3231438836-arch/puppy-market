@@ -1,0 +1,5 @@
+import {it,expect,vi,afterEach} from 'vitest';
+afterEach(()=>{vi.unstubAllGlobals();vi.resetModules();});
+it('正式路径保持原键，不迁移或清空存档',async()=>{vi.stubGlobal('location',{pathname:'/puppy-market/'});vi.resetModules();const {storageKey,previewId}=await import('../src/storage-key');expect(previewId).toBe('');expect(storageKey('puppy-mart.shop-session.v1')).toBe('puppy-mart.shop-session.v1');});
+it('试玩目录隔离所有本游戏存储，不依赖网址查询参数',async()=>{vi.stubGlobal('location',{pathname:'/puppy-market/previews/p2-20261026/'});vi.resetModules();const {storageKey,previewId}=await import('../src/storage-key');expect(previewId).toBe('p2-20261026');for(const name of ['shop-session','tutorial','player-profile','layout','settings','motion','author-draft'])expect(storageKey(`puppy-mart.${name}.v1`)).toBe(`puppy-mart.preview-p2-20261026.${name}.v1`);expect(storageKey('unrelated')).toBe('unrelated');});
+it('不同试玩各自保留进度',async()=>{vi.stubGlobal('location',{pathname:'/puppy-market/previews/another-preview/'});vi.resetModules();const {storageKey}=await import('../src/storage-key');expect(storageKey('puppy-mart.shop-session.v1')).toBe('puppy-mart.preview-another-preview.shop-session.v1');});

@@ -1,8 +1,9 @@
+import {storageKey} from '../storage-key';
 import content from '../data/tutorial.json';
 import { center, NOTEBOOK_SPOT, fixtures, type Point, type ShopSimulation } from './world';
 import { readStore, writeStore } from './persistence';
 export { content as tutorialContent };
-export const TUTORIAL_KEY='puppy-mart.tutorial.v1';
+export const TUTORIAL_KEY=storageKey('puppy-mart.tutorial.v1');
 export interface TutorialRecord {version:1;step:number;status:'active'|'completed'|'skipped'}
 export class Tutorial {
  record:TutorialRecord;writable=true;warning='';

@@ -1,8 +1,9 @@
+import {storageKey} from '../storage-key';
 import {defaultContent,parseContent,type NarrativeContent} from './content';
 import {Narrative} from '../simulation/narrative';
 import neutral from '../art/portraits/test-regular-neutral.svg?url';import soft from '../art/portraits/test-regular-soft.svg?url';
 import './style.css';
-const KEY='puppy-mart.author-draft.v1';
+const KEY=storageKey('puppy-mart.author-draft.v1');
 const root=document.querySelector<HTMLElement>('#app')!;document.body.classList.add('author-mode');
 const esc=(s:string)=>s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
 let content=defaultContent(),text=JSON.stringify(content,null,2),canSave=true,warning='',ref='first',nodeId='greeting',dirty=false;

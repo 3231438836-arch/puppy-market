@@ -1,6 +1,7 @@
+import {storageKey} from '../storage-key';
 import {readStore,writeStore} from './persistence';
 interface Settings{version:1;sound:boolean}
-const KEY='puppy-mart.settings.v1';
+const KEY=storageKey('puppy-mart.settings.v1');
 const saved=readStore(KEY,():Settings=>({version:1,sound:true}),(v):v is Settings=>!!v&&typeof v==='object'&&(v as Settings).version===1&&typeof(v as Settings).sound==='boolean');
 export class Sound {
  enabled=saved.value.sound;private context:AudioContext|null=null;
